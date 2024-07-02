@@ -11,10 +11,24 @@ defmodule ExLox do
   end
 
   def run_file(path) do
-    File.read!(path) |> run()
+    path
+    |> File.read!()
+    |> run()
+    |> case do
+      :error -> exit({:shutdown, 65})
+      :ok -> :ok
+    end
   end
 
   defp run(source) do
-    IO.puts("running #{source}")
+    ExLox.Scanner.scan_tokens(source)
+    |> Enum.each(&IO.puts/1)
+  end
+
+  defp error(line, msg), do: report(line, "", msg)
+
+  defp report(line, where, msg) do
+    # TODO: had_error -> true
+    IO.puts("[line #{line}] Error#{where}: #{msg}")
   end
 end
