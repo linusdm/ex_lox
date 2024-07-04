@@ -1,0 +1,4 @@
+%{
+  "extrace": {:hex, :extrace, "0.5.0", "4ee5419fbc3820c4592daebe0f8527001aa623578d9a725d8ae521315fce0277", [:mix], [{:recon, "~> 2.5", [hex: :recon, repo: "hexpm", optional: false]}], "hexpm", "2a3ab7fa0701949efee1034293fa0b0e65926ffe256ccd6d0e10dd8a9406cd02"},
+  "recon": {:hex, :recon, "2.5.5", "c108a4c406fa301a529151a3bb53158cadc4064ec0c5f99b03ddb8c0e4281bdf", [:mix, :rebar3], [], "hexpm", "632a6f447df7ccc1a4a10bdcfce71514412b16660fe59deca0fcf0aa3c054404"},
+}
