@@ -7,6 +7,10 @@ defmodule ExLox.Scanner do
     {status, Enum.reverse(tokens)}
   end
 
+  defguardp is_alpha(char) when char in ?a..?z or char in ?A..?Z or char == ?_
+  defguardp is_numeric(char) when char in ?0..?9
+  defguardp is_alpha_numeric(char) when is_alpha(char) or is_numeric(char)
+
   defp scan_tokens_recursive(source, status \\ :ok, tokens \\ [], line \\ 1)
 
   defp scan_tokens_recursive("", status, tokens, line) do
@@ -68,9 +72,13 @@ defmodule ExLox.Scanner do
               {rest, :error, tokens, line}
           end
 
-        <<lexeme::utf8, _rest::binary>> = source when lexeme in ?0..?9 ->
+        <<char::utf8, _rest::binary>> = source when is_numeric(char) ->
           {lexeme, literal, rest} = consume_number_literal(source)
           {rest, status, add_token(tokens, :number, lexeme, line, literal), line}
+
+        <<char::utf8, _rest::binary>> = source when is_alpha(char) ->
+          {lexeme, type, rest} = consume_identifier(source)
+          {rest, status, add_token(tokens, type, lexeme, line), line}
 
         <<_::binary-size(1), rest::binary>> ->
           ExLox.error(line, "Unexpected character.")
@@ -111,12 +119,11 @@ defmodule ExLox.Scanner do
     {:error, "", line}
   end
 
-  defp consume_number_literal(<<num_char::utf8, _rest::binary>> = source)
-       when num_char in ?0..?9 do
+  defp consume_number_literal(<<char::utf8, _rest::binary>> = source) when is_numeric(char) do
     {lexeme, rest} =
       case consume_integer_literal(source) do
-        {lexeme_integer_part, <<".", num_char::utf8, rest::binary>>} when num_char in ?0..?9 ->
-          {lexeme_decimal_part, rest} = consume_integer_literal(<<num_char, rest::binary>>)
+        {lexeme_integer_part, <<".", char::utf8, rest::binary>>} when is_numeric(char) ->
+          {lexeme_decimal_part, rest} = consume_integer_literal(<<char, rest::binary>>)
           {lexeme_integer_part <> "." <> lexeme_decimal_part, rest}
 
         {lexeme, rest} ->
@@ -129,11 +136,39 @@ defmodule ExLox.Scanner do
 
   defp consume_integer_literal(source, lexeme \\ "") do
     case source do
-      <<char::utf8, rest::binary>> when char in ?0..?9 ->
+      <<char::utf8, rest::binary>> when is_numeric(char) ->
         consume_integer_literal(rest, <<lexeme::binary, char>>)
 
       source ->
         {lexeme, source}
     end
+  end
+
+  @keywords %{
+    "and" => :and,
+    "class" => :class,
+    "else" => :else,
+    "false" => false,
+    "for" => :for,
+    "fun" => :fun,
+    "if" => :if,
+    "nil" => nil,
+    "or" => :or,
+    "print" => :print,
+    "return" => :return,
+    "super" => :super,
+    "this" => :this,
+    "true" => true,
+    "var" => :var,
+    "while" => :while
+  }
+  defp consume_identifier(source, lexeme \\ "")
+
+  defp consume_identifier(<<char::utf8, rest::binary>>, lexeme) when is_alpha_numeric(char) do
+    consume_identifier(rest, <<lexeme::binary, char>>)
+  end
+
+  defp consume_identifier(rest, lexeme) do
+    {lexeme, Map.get(@keywords, lexeme, :identifier), rest}
   end
 end
