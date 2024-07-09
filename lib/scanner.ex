@@ -38,6 +38,10 @@ defmodule ExLox.Scanner do
   @two_char_lexemes Map.keys(@lexemes_to_types) |> Enum.filter(&(byte_size(&1) == 2))
 
   defp scan_tokens_recursive(source, status, tokens, line) do
+    # order matters here: to achieve 'maximal munch' (see page 53) lexemes with more characters
+    # should be matched first.
+    # Maximal munch: when two lexical grammar rules can both maatch a chunk of code that the scanner
+    # is looking at, whichever one matches the most characters wins.
     {rest, status, tokens, line} =
       case source do
         "//" <> rest ->
@@ -55,8 +59,8 @@ defmodule ExLox.Scanner do
         "\n" <> rest ->
           {rest, status, tokens, line + 1}
 
-        "\"" <> rest ->
-          case consume_string_literal(rest, line) do
+        "\"" <> _rest = source ->
+          case consume_string_literal(source, line) do
             {:ok, lexeme, literal, rest, line} ->
               {rest, status, add_token(tokens, :string, lexeme, line, literal), line}
 
@@ -81,10 +85,24 @@ defmodule ExLox.Scanner do
   defp consume_rest_of_line("\n" <> _ = source), do: source
   defp consume_rest_of_line(<<_::binary-size(1)>> <> rest), do: consume_rest_of_line(rest)
 
-  defp consume_string_literal(source, lexeme \\ "\"", line)
+  defp consume_string_literal(source, lexeme \\ "", line)
+
+  defp consume_string_literal("\"" <> rest, _lexeme = "", line) do
+    consume_string_literal(rest, "\"", line)
+  end
 
   defp consume_string_literal("\"" <> rest, lexeme, line) do
-    lexeme = String.reverse("\"" <> lexeme)
+    # add closing quote
+    lexeme = "\"" <> lexeme
+
+    # reverse accumulated bytes for lexeme
+    # (reversing with String.reverse/1 doesn't work, when using multi-byte UTF-8 characters)
+    lexeme =
+      for <<char <- lexeme>>, reduce: <<>> do
+        acc -> <<char, acc::binary>>
+      end
+
+    # literal = lexeme without the two quotes
     literal = String.slice(lexeme, 1..-2//1)
     {:ok, lexeme, literal, rest, line}
   end
