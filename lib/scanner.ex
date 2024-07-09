@@ -44,22 +44,22 @@ defmodule ExLox.Scanner do
     # is looking at, whichever one matches the most characters wins.
     {rest, status, tokens, line} =
       case source do
-        "//" <> rest ->
+        <<"//", rest::binary>> ->
           {consume_rest_of_line(rest), status, tokens, line}
 
-        <<lexeme::binary-size(2)>> <> rest when lexeme in @two_char_lexemes ->
+        <<lexeme::binary-size(2), rest::binary>> when lexeme in @two_char_lexemes ->
           {rest, status, add_token(tokens, @lexemes_to_types[lexeme], lexeme, line), line}
 
-        <<lexeme::binary-size(1)>> <> rest when lexeme in @one_char_lexemes ->
+        <<lexeme::binary-size(1), rest::binary>> when lexeme in @one_char_lexemes ->
           {rest, status, add_token(tokens, @lexemes_to_types[lexeme], lexeme, line), line}
 
-        <<lexeme::binary-size(1)>> <> rest when lexeme in [" ", "\r", "\t"] ->
+        <<lexeme::binary-size(1), rest::binary>> when lexeme in [" ", "\r", "\t"] ->
           {rest, status, tokens, line}
 
-        "\n" <> rest ->
+        <<"\n", rest::binary>> ->
           {rest, status, tokens, line + 1}
 
-        "\"" <> _rest = source ->
+        <<"\"", _rest::binary>> = source ->
           case consume_string_literal(source, line) do
             {:ok, lexeme, literal, rest, line} ->
               {rest, status, add_token(tokens, :string, lexeme, line, literal), line}
@@ -68,7 +68,7 @@ defmodule ExLox.Scanner do
               {"", :error, tokens, line}
           end
 
-        <<_::binary-size(1)>> <> rest ->
+        <<_::binary-size(1), rest::binary>> ->
           ExLox.error(line, "Unexpected character.")
           {rest, :error, tokens, line}
       end
@@ -82,18 +82,18 @@ defmodule ExLox.Scanner do
   end
 
   defp consume_rest_of_line("" = source), do: source
-  defp consume_rest_of_line("\n" <> _ = source), do: source
-  defp consume_rest_of_line(<<_::binary-size(1)>> <> rest), do: consume_rest_of_line(rest)
+  defp consume_rest_of_line(<<"\n", source::binary>>), do: source
+  defp consume_rest_of_line(<<_::binary-size(1), rest::binary>>), do: consume_rest_of_line(rest)
 
   defp consume_string_literal(source, lexeme \\ "", line)
 
-  defp consume_string_literal("\"" <> rest, _lexeme = "", line) do
+  defp consume_string_literal(<<"\"", rest::binary>>, _lexeme = "", line) do
     consume_string_literal(rest, "\"", line)
   end
 
-  defp consume_string_literal("\"" <> rest, lexeme, line) do
+  defp consume_string_literal(<<"\"", rest::binary>>, lexeme, line) do
     # add closing quote
-    lexeme = "\"" <> lexeme
+    lexeme = <<"\"", lexeme::binary>>
 
     # reverse accumulated bytes for lexeme
     # (reversing with String.reverse/1 doesn't work, when using multi-byte UTF-8 characters)
@@ -107,12 +107,12 @@ defmodule ExLox.Scanner do
     {:ok, lexeme, literal, rest, line}
   end
 
-  defp consume_string_literal("\n" <> rest, lexeme, line) do
-    consume_string_literal(rest, "\n" <> lexeme, line + 1)
+  defp consume_string_literal(<<"\n", rest::binary>>, lexeme, line) do
+    consume_string_literal(rest, <<"\n", lexeme::binary>>, line + 1)
   end
 
-  defp consume_string_literal(<<char::binary-size(1)>> <> rest, lexeme, line) do
-    consume_string_literal(rest, char <> lexeme, line)
+  defp consume_string_literal(<<char::binary-size(1), rest::binary>>, lexeme, line) do
+    consume_string_literal(rest, <<char::binary, lexeme::binary>>, line)
   end
 
   defp consume_string_literal("", _lexeme, line) do
