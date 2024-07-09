@@ -68,6 +68,10 @@ defmodule ExLox.Scanner do
               {"", :error, tokens, line}
           end
 
+        <<lexeme::utf8, _rest::binary>> when lexeme in ?0..?9 ->
+          {:ok, lexeme, literal, rest} = consume_number_literal(source)
+          {rest, status, add_token(tokens, :number, lexeme, line, literal), line}
+
         <<_::binary-size(1), rest::binary>> ->
           ExLox.error(line, "Unexpected character.")
           {rest, :error, tokens, line}
@@ -118,5 +122,23 @@ defmodule ExLox.Scanner do
   defp consume_string_literal("", _lexeme, line) do
     ExLox.error(line, "Unterminated string.")
     {:error, line}
+  end
+
+  # TODO: consume decimal...
+  defp consume_number_literal(source, lexeme \\ "")
+
+  defp consume_number_literal(<<char::utf8, rest::binary>>, lexeme) when char in ?0..?9 do
+    consume_number_literal(rest, <<char, lexeme::binary>>)
+  end
+
+  defp consume_number_literal(rest, lexeme) do
+    lexeme =
+      for <<char <- lexeme>>, reduce: <<>> do
+        acc -> <<char, acc::binary>>
+      end
+
+    {literal, ""} = Float.parse(lexeme)
+
+    {:ok, lexeme, literal, rest}
   end
 end
