@@ -64,12 +64,12 @@ defmodule ExLox.Scanner do
             {:ok, lexeme, literal, rest, line} ->
               {rest, status, add_token(tokens, :string, lexeme, line, literal), line}
 
-            {:error, line} ->
-              {"", :error, tokens, line}
+            {:error, rest, line} ->
+              {rest, :error, tokens, line}
           end
 
-        <<lexeme::utf8, _rest::binary>> when lexeme in ?0..?9 ->
-          {:ok, lexeme, literal, rest} = consume_number_literal(source)
+        <<lexeme::utf8, _rest::binary>> = source when lexeme in ?0..?9 ->
+          {lexeme, literal, rest} = consume_number_literal(source)
           {rest, status, add_token(tokens, :number, lexeme, line, literal), line}
 
         <<_::binary-size(1), rest::binary>> ->
@@ -80,7 +80,6 @@ defmodule ExLox.Scanner do
     scan_tokens_recursive(rest, status, tokens, line)
   end
 
-  # TODO: inline if only used once
   defp add_token(tokens, type, lexeme, line, literal \\ nil) do
     [%Token{type: type, lexeme: lexeme, line: line, literal: literal} | tokens]
   end
@@ -95,50 +94,46 @@ defmodule ExLox.Scanner do
     consume_string_literal(rest, "\"", line)
   end
 
-  defp consume_string_literal(<<"\"", rest::binary>>, lexeme, line) do
-    # add closing quote
-    lexeme = <<"\"", lexeme::binary>>
-
-    # reverse accumulated bytes for lexeme
-    # (reversing with String.reverse/1 doesn't work, when using multi-byte UTF-8 characters)
-    lexeme =
-      for <<char <- lexeme>>, reduce: <<>> do
-        acc -> <<char, acc::binary>>
-      end
-
-    # literal = lexeme without the two quotes
-    literal = String.slice(lexeme, 1..-2//1)
-    {:ok, lexeme, literal, rest, line}
+  defp consume_string_literal(<<"\"", rest::binary>>, <<"\"", literal::binary>> = lexeme, line) do
+    {:ok, <<lexeme::binary, "\"">>, literal, rest, line}
   end
 
   defp consume_string_literal(<<"\n", rest::binary>>, lexeme, line) do
-    consume_string_literal(rest, <<"\n", lexeme::binary>>, line + 1)
+    consume_string_literal(rest, <<lexeme::binary, "\n">>, line + 1)
   end
 
-  defp consume_string_literal(<<char::binary-size(1), rest::binary>>, lexeme, line) do
-    consume_string_literal(rest, <<char::binary, lexeme::binary>>, line)
+  defp consume_string_literal(<<byte::binary-size(1), rest::binary>>, lexeme, line) do
+    consume_string_literal(rest, <<lexeme::binary, byte::binary>>, line)
   end
 
   defp consume_string_literal("", _lexeme, line) do
     ExLox.error(line, "Unterminated string.")
-    {:error, line}
+    {:error, "", line}
   end
 
-  # TODO: consume decimal...
-  defp consume_number_literal(source, lexeme \\ "")
+  defp consume_number_literal(<<num_char::utf8, _rest::binary>> = source)
+       when num_char in ?0..?9 do
+    {lexeme, rest} =
+      case consume_integer_literal(source) do
+        {lexeme_integer_part, <<".", num_char::utf8, rest::binary>>} when num_char in ?0..?9 ->
+          {lexeme_decimal_part, rest} = consume_integer_literal(<<num_char, rest::binary>>)
+          {lexeme_integer_part <> "." <> lexeme_decimal_part, rest}
 
-  defp consume_number_literal(<<char::utf8, rest::binary>>, lexeme) when char in ?0..?9 do
-    consume_number_literal(rest, <<char, lexeme::binary>>)
-  end
-
-  defp consume_number_literal(rest, lexeme) do
-    lexeme =
-      for <<char <- lexeme>>, reduce: <<>> do
-        acc -> <<char, acc::binary>>
+        {lexeme, rest} ->
+          {lexeme, rest}
       end
 
     {literal, ""} = Float.parse(lexeme)
+    {lexeme, literal, rest}
+  end
 
-    {:ok, lexeme, literal, rest}
+  defp consume_integer_literal(source, lexeme \\ "") do
+    case source do
+      <<char::utf8, rest::binary>> when char in ?0..?9 ->
+        consume_integer_literal(rest, <<lexeme::binary, char>>)
+
+      source ->
+        {lexeme, source}
+    end
   end
 end
