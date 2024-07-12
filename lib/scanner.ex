@@ -1,6 +1,4 @@
 defmodule ExLox.Scanner do
-  alias ExLox.Token
-
   def scan_tokens(source) do
     {status, tokens, last_line} = scan_tokens_recursive(source)
     tokens = add_token(tokens, :eof, "", last_line)
@@ -90,7 +88,7 @@ defmodule ExLox.Scanner do
   end
 
   defp add_token(tokens, type, lexeme, line, literal \\ nil) do
-    [%Token{type: type, lexeme: lexeme, line: line, literal: literal} | tokens]
+    [%ExLox.Token{type: type, lexeme: lexeme, line: line, literal: literal} | tokens]
   end
 
   defp consume_rest_of_line("" = source), do: source
