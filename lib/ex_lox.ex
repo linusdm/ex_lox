@@ -19,12 +19,25 @@ defmodule ExLox do
   end
 
   defp run(source) do
-    {status, tokens} = ExLox.Scanner.scan_tokens(source)
-    Enum.each(tokens, &IO.puts/1)
-    status
+    with {status, tokens} <- ExLox.Scanner.scan_tokens(source),
+         {:ok, expression} <- ExLox.Parser.parse(tokens, status) do
+      expression
+      |> ExLox.AstPrintable.print()
+      |> IO.puts()
+    end
   end
 
-  def error(line, msg), do: report(line, "", msg)
+  def error_at_line(line, msg), do: report(line, "", msg)
+
+  def error_at_token(%ExLox.Token{} = token, msg) do
+    where =
+      case token do
+        %{type: :eof} -> " at end"
+        %{lexeme: lexeme} -> " at '#{lexeme}'"
+      end
+
+    report(token.line, where, msg)
+  end
 
   defp report(line, where, msg) do
     IO.puts("[line #{line}] Error#{where}: #{msg}")

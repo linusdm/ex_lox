@@ -80,7 +80,7 @@ defmodule ExLox.Scanner do
           {status, add_token(tokens, type, lexeme, line), line, rest}
 
         <<_::binary-size(1), rest::binary>> ->
-          ExLox.error(line, "Unexpected character.")
+          ExLox.error_at_line(line, "Unexpected character.")
           {:error, tokens, line, rest}
       end
 
@@ -114,7 +114,7 @@ defmodule ExLox.Scanner do
   end
 
   defp consume_string_literal("", _lexeme, line) do
-    ExLox.error(line, "Unterminated string.")
+    ExLox.error_at_line(line, "Unterminated string.")
     {:error, "", line}
   end
 

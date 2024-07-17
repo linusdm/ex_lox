@@ -24,7 +24,7 @@ end
 
 defimpl ExLox.AstPrintable, for: ExLox.Expr.Literal do
   def print(%ExLox.Expr.Literal{value: value}) do
-    if value, do: value, else: "nil"
+    if value == nil, do: "nil", else: value
   end
 end
 
