@@ -24,3 +24,6 @@ ex_lox-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+/*.lox
+/todo.txt
