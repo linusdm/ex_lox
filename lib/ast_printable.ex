@@ -11,25 +11,35 @@ defmodule ExLox.AstPrintable.Util do
 end
 
 defimpl ExLox.AstPrintable, for: ExLox.Expr.Binary do
-  def print(binary) do
-    ExLox.AstPrintable.Util.parenthesize(binary.operator.lexeme, [binary.left, binary.right])
+  alias ExLox.Expr.Binary
+  alias ExLox.Token
+
+  def print(%Binary{operator: %Token{} = operator, left: left, right: right}) do
+    ExLox.AstPrintable.Util.parenthesize(operator.lexeme, [left, right])
   end
 end
 
 defimpl ExLox.AstPrintable, for: ExLox.Expr.Grouping do
-  def print(grouping) do
-    ExLox.AstPrintable.Util.parenthesize("group", [grouping.expression])
+  alias ExLox.Expr.Grouping
+
+  def print(%Grouping{expression: expression}) do
+    ExLox.AstPrintable.Util.parenthesize("group", [expression])
   end
 end
 
 defimpl ExLox.AstPrintable, for: ExLox.Expr.Literal do
-  def print(%ExLox.Expr.Literal{value: value}) do
+  alias ExLox.Expr.Literal
+
+  def print(%Literal{value: value}) do
     if value == nil, do: "nil", else: value
   end
 end
 
 defimpl ExLox.AstPrintable, for: ExLox.Expr.Unary do
-  def print(%ExLox.Expr.Unary{operator: operator, right: right}) do
+  alias ExLox.Expr.Unary
+  alias ExLox.Token
+
+  def print(%Unary{operator: %Token{} = operator, right: right}) do
     ExLox.AstPrintable.Util.parenthesize(operator.lexeme, right)
   end
 end

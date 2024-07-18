@@ -1,38 +1,54 @@
 defmodule ExLox.Parser do
+  alias ExLox.Parser
   alias ExLox.Token
-  alias ExLox.Expr.{Literal}
+  alias ExLox.Expr.{Literal, Binary}
 
-  def parse(tokens, status \\ :ok) do
-    with {status, expression} <- primary(tokens, status) do
-      {status, expression}
+  defstruct [:tokens, :status, :expression]
+
+  def parse(tokens, status) do
+    %Parser{tokens: tokens, status: status} |> expression() |> unwrap_result()
+  end
+
+  defp expression(%Parser{} = parser) do
+    equality(parser)
+  end
+
+  defp equality(%Parser{} = parser) do
+    parser |> comparison() |> equality_recursive()
+  end
+
+  defp equality_recursive(%Parser{} = parser) do
+    case parser.tokens do
+      [%Token{type: type} = operator | rest] when type in [:bang_equal, :equal_equal] ->
+        comp_parser = parser |> with_tokens(rest) |> comparison()
+        exp = %Binary{left: parser.expression, operator: operator, right: comp_parser.expression}
+        comp_parser |> with_expression(exp) |> equality_recursive()
+
+      _ ->
+        parser
     end
   end
 
-  # defp expression(tokens, status) do
+  defp comparison(parser) do
+    primary(parser)
+  end
+
+  # defp term(parser) do
   # end
 
-  # defp equality(tokens, status) do
+  # defp factor(parser) do
   # end
 
-  # defp comparison(tokens, status) do
+  # defp unary(parser) do
   # end
 
-  # defp term(tokens, status) do
-  # end
+  defp primary(%Parser{} = parser) do
+    case parser.tokens do
+      [%Token{type: type} | rest] when type in [nil, false, true] ->
+        parser |> with_expression(%Literal{value: type}) |> with_tokens(rest)
 
-  # defp factor(tokens, status) do
-  # end
-
-  # defp unary(tokens, status) do
-  # end
-
-  defp primary(tokens, status) do
-    case tokens do
-      [%Token{type: type} | _] when type in [nil, false, true] ->
-        {status, %Literal{value: type}}
-
-      [%Token{type: type, literal: literal} | _] when type in [:number, :string] ->
-        {status, %Literal{value: literal}}
+      [%Token{type: type, literal: literal} | rest] when type in [:number, :string] ->
+        parser |> with_expression(%Literal{value: literal}) |> with_tokens(rest)
 
       # [%Token{type: :left_paren} | rest] ->
       #   case expression(rest, status) do
@@ -40,9 +56,14 @@ defmodule ExLox.Parser do
       #     [token | _] = tokens -> ExLox.error_at_token(token, "Expect ')' after expression.")
       #   end
 
-      [token | _] ->
+      [token | rest] ->
         ExLox.error_at_token(token, "Expect expression.")
-        :error
+        parser |> with_error() |> with_tokens(rest)
     end
   end
+
+  defp with_tokens(%Parser{} = parser, tokens), do: %{parser | tokens: tokens}
+  defp with_expression(%Parser{} = parser, expression), do: %{parser | expression: expression}
+  defp with_error(%Parser{} = parser), do: %{parser | status: :error}
+  defp unwrap_result(%Parser{} = parser), do: {parser.status, parser.expression}
 end
