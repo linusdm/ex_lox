@@ -13,43 +13,32 @@ defmodule ExLox.Parser do
     equality(parser)
   end
 
-  defp equality(%Parser{} = parser) do
-    parse_binary_expression(parser, [:bang_equal, :equal_equal], &comparison/1)
-  end
+  @binary_rules equality: [:bang_equal, :equal_equal],
+                comparison: [:greater, :greater_equal, :less, :less_equal],
+                term: [:minus, :plus],
+                factor: [:slash, :star]
 
-  defp comparison(%Parser{} = parser) do
-    parse_binary_expression(parser, [:greater, :greater_equal, :less, :less_equal], &term/1)
-  end
+  for {rule, token_types} <- @binary_rules do
+    rules = Keyword.keys(@binary_rules)
+    rule_index = Enum.find_index(rules, &(&1 == rule))
+    next_rule = Enum.at(rules, rule_index + 1, :unary)
 
-  defp term(%Parser{} = parser) do
-    parse_binary_expression(parser, [:minus, :plus], &factor/1)
-  end
+    defp unquote(rule)(%Parser{} = parser) do
+      # It's impossible to call an anonymous function, recursively.
+      # This trick allows you to call the function if you pass it in explicitly.
+      # I don't know how I feel about this...
+      recur = fn
+        %Parser{tokens: [token | rest]} = parser, recur when token.type in unquote(token_types) ->
+          right_parser = parser |> with_tokens(rest) |> unquote(next_rule)()
+          exp = %Binary{left: parser.expression, operator: token, right: right_parser.expression}
+          right_parser |> with_expression(exp) |> recur.(recur)
 
-  defp factor(%Parser{} = parser) do
-    parse_binary_expression(parser, [:slash, :star], &unary/1)
-  end
-
-  defp parse_binary_expression(parser, token_types, next_rule) do
-    # It's impossible to call an anonymous function, recursively.
-    # This trick allows you to call the function if you pass it in explicitly.
-    # I don't know how I feel about this...
-    recur = fn parser, recur ->
-      if parser.tokens != [] and hd(parser.tokens).type in token_types do
-        right_parser = parser |> with_tokens(tl(parser.tokens)) |> next_rule.()
-
-        exp = %Binary{
-          left: parser.expression,
-          operator: hd(parser.tokens),
-          right: right_parser.expression
-        }
-
-        right_parser |> with_expression(exp) |> recur.(recur)
-      else
-        parser
+        parser, _recur ->
+          parser
       end
-    end
 
-    parser |> next_rule.() |> recur.(recur)
+      parser |> unquote(next_rule)() |> recur.(recur)
+    end
   end
 
   defp unary(%Parser{} = parser) do
