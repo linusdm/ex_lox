@@ -13,7 +13,7 @@ defmodule ExLox do
 
   def run_file(path) do
     case File.read!(path) |> run() do
-      {:error, _} -> exit({:shutdown, 65})
+      :error -> exit({:shutdown, 65})
       :ok -> :ok
     end
   end

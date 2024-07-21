@@ -34,11 +34,15 @@ defmodule ExLox.Parser do
     # This trick allows you to call the function if you pass it in explicitly.
     # I don't know how I feel about this...
     recur = fn parser, recur ->
-      %Parser{tokens: [token | rest]} = parser
+      if parser.tokens != [] and hd(parser.tokens).type in token_types do
+        right_parser = parser |> with_tokens(tl(parser.tokens)) |> next_rule.()
 
-      if token.type in token_types do
-        right_parser = parser |> with_tokens(rest) |> next_rule.()
-        exp = %Binary{left: parser.expression, operator: token, right: right_parser.expression}
+        exp = %Binary{
+          left: parser.expression,
+          operator: hd(parser.tokens),
+          right: right_parser.expression
+        }
+
         right_parser |> with_expression(exp) |> recur.(recur)
       else
         parser
@@ -92,5 +96,6 @@ defmodule ExLox.Parser do
   defp with_tokens(%Parser{} = parser, tokens), do: %{parser | tokens: tokens}
   defp with_expression(%Parser{} = parser, expression), do: %{parser | expression: expression}
   defp with_error(%Parser{} = parser), do: %{parser | status: :error}
-  defp unwrap_result(%Parser{} = parser), do: {parser.status, parser.expression}
+  defp unwrap_result(%Parser{status: :ok} = parser), do: {:ok, parser.expression}
+  defp unwrap_result(%Parser{status: :error}), do: :error
 end
