@@ -13,7 +13,7 @@ defmodule ExLox do
 
   def run_file(path) do
     case File.read!(path) |> run() do
-      :error -> exit({:shutdown, 65})
+      {:error, _} -> exit({:shutdown, 65})
       :ok -> :ok
     end
   end
@@ -22,7 +22,7 @@ defmodule ExLox do
     with {status, tokens} <- ExLox.Scanner.scan_tokens(source),
          {:ok, expression} <- ExLox.Parser.parse(tokens, status) do
       expression
-      |> ExLox.AstPrintable.print()
+      |> ExLox.AstPrintable.to_string()
       |> IO.puts()
     end
   end
