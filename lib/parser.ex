@@ -13,16 +13,16 @@ defmodule ExLox.Parser do
     equality(parser)
   end
 
+  @equality_token_types [:bang_equal, :equal_equal]
   defp equality(%Parser{} = parser) do
     # It's impossible to call an anonymous function, recursively.
     # This trick allows you to call the function if you pass it in explicitly.
     # I don't know how I feel about this...
     recur = fn
-      %Parser{tokens: [token | rest]} = parser, recur
-      when token.type in [:bang_equal, :equal_equal] ->
-        comp_parser = parser |> with_tokens(rest) |> comparison()
-        exp = %Binary{left: parser.expression, operator: token, right: comp_parser.expression}
-        comp_parser |> with_expression(exp) |> recur.(recur)
+      %Parser{tokens: [token | rest]} = parser, recur when token.type in @equality_token_types ->
+        right_parser = parser |> with_tokens(rest) |> comparison()
+        exp = %Binary{left: parser.expression, operator: token, right: right_parser.expression}
+        right_parser |> with_expression(exp) |> recur.(recur)
 
       parser, _recur ->
         parser
@@ -31,12 +31,25 @@ defmodule ExLox.Parser do
     parser |> comparison() |> recur.(recur)
   end
 
+  @comparison_token_types [:greater, :greater_equal, :less, :less_equal]
   defp comparison(parser) do
-    primary(parser)
+    recur = fn
+      %Parser{tokens: [token | rest]} = parser, recur
+      when token.type in @comparison_token_types ->
+        comp_parser = parser |> with_tokens(rest) |> term()
+        exp = %Binary{left: parser.expression, operator: token, right: comp_parser.expression}
+        comp_parser |> with_expression(exp) |> recur.(recur)
+
+      parser, _recur ->
+        parser
+    end
+
+    parser |> term() |> recur.(recur)
   end
 
-  # defp term(parser) do
-  # end
+  defp term(parser) do
+    primary(parser)
+  end
 
   # defp factor(parser) do
   # end
