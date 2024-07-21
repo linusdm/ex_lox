@@ -40,6 +40,6 @@ defimpl ExLox.AstPrintable, for: ExLox.Expr.Unary do
   alias ExLox.Token
 
   def print(%Unary{operator: %Token{} = operator, right: right}) do
-    ExLox.AstPrintable.Util.parenthesize(operator.lexeme, right)
+    ExLox.AstPrintable.Util.parenthesize(operator.lexeme, [right])
   end
 end

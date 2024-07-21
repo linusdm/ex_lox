@@ -1,7 +1,7 @@
 defmodule ExLox.Parser do
   alias ExLox.Parser
   alias ExLox.Token
-  alias ExLox.Expr.{Literal, Binary}
+  alias ExLox.Expr.{Literal, Binary, Unary}
 
   defstruct [:tokens, :status, :expression]
 
@@ -31,14 +31,13 @@ defmodule ExLox.Parser do
     parser |> comparison() |> recur.(recur)
   end
 
-  @comparison_token_types [:greater, :greater_equal, :less, :less_equal]
+  @comp_token_types [:greater, :greater_equal, :less, :less_equal]
   defp comparison(parser) do
     recur = fn
-      %Parser{tokens: [token | rest]} = parser, recur
-      when token.type in @comparison_token_types ->
-        comp_parser = parser |> with_tokens(rest) |> term()
-        exp = %Binary{left: parser.expression, operator: token, right: comp_parser.expression}
-        comp_parser |> with_expression(exp) |> recur.(recur)
+      %Parser{tokens: [token | rest]} = parser, recur when token.type in @comp_token_types ->
+        right_parser = parser |> with_tokens(rest) |> term()
+        exp = %Binary{left: parser.expression, operator: token, right: right_parser.expression}
+        right_parser |> with_expression(exp) |> recur.(recur)
 
       parser, _recur ->
         parser
@@ -47,15 +46,46 @@ defmodule ExLox.Parser do
     parser |> term() |> recur.(recur)
   end
 
+  @term_token_types [:minus, :plus]
   defp term(parser) do
-    primary(parser)
+    recur = fn
+      %Parser{tokens: [token | rest]} = parser, recur when token.type in @term_token_types ->
+        right_parser = parser |> with_tokens(rest) |> factor()
+        exp = %Binary{left: parser.expression, operator: token, right: right_parser.expression}
+        right_parser |> with_expression(exp) |> recur.(recur)
+
+      parser, _recur ->
+        parser
+    end
+
+    parser |> factor() |> recur.(recur)
   end
 
-  # defp factor(parser) do
-  # end
+  @factor_token_types [:slash, :star]
+  defp factor(parser) do
+    recur = fn
+      %Parser{tokens: [token | rest]} = parser, recur when token.type in @factor_token_types ->
+        right_parser = parser |> with_tokens(rest) |> unary()
+        exp = %Binary{left: parser.expression, operator: token, right: right_parser.expression}
+        right_parser |> with_expression(exp) |> recur.(recur)
 
-  # defp unary(parser) do
-  # end
+      parser, _recur ->
+        parser
+    end
+
+    parser |> unary() |> recur.(recur)
+  end
+
+  @unary_token_types [:bang, :minus]
+  defp unary(%Parser{tokens: [token | rest]} = parser) when token.type in @unary_token_types do
+    right_parser = parser |> with_tokens(rest) |> unary()
+    exp = %Unary{operator: token, right: right_parser.expression}
+    right_parser |> with_expression(exp)
+  end
+
+  defp unary(parser) do
+    primary(parser)
+  end
 
   defp primary(%Parser{} = parser) do
     case parser.tokens do
