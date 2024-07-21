@@ -48,15 +48,16 @@ defmodule ExLox.Parser do
     parser |> next_rule.() |> recur.(recur)
   end
 
-  @unary_token_types [:bang, :minus]
-  defp unary(%Parser{tokens: [token | rest]} = parser) when token.type in @unary_token_types do
-    right_parser = parser |> with_tokens(rest) |> unary()
-    exp = %Unary{operator: token, right: right_parser.expression}
-    right_parser |> with_expression(exp)
-  end
+  defp unary(%Parser{} = parser) do
+    case parser do
+      %Parser{tokens: [token | rest]} = parser when token.type in [:bang, :minus] ->
+        right_parser = parser |> with_tokens(rest) |> unary()
+        exp = %Unary{operator: token, right: right_parser.expression}
+        right_parser |> with_expression(exp)
 
-  defp unary(parser) do
-    primary(parser)
+      parser ->
+        primary(parser)
+    end
   end
 
   defp primary(%Parser{} = parser) do
