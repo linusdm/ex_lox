@@ -1,7 +1,7 @@
 defmodule ExLox.Parser do
   alias ExLox.Parser
   alias ExLox.Token
-  alias ExLox.Expr.{Literal, Binary, Unary}
+  alias ExLox.Expr.{Literal, Binary, Unary, Grouping}
 
   defstruct [:tokens, :status, :expression]
 
@@ -90,20 +90,29 @@ defmodule ExLox.Parser do
   defp primary(%Parser{} = parser) do
     case parser.tokens do
       [%Token{type: type} | rest] when type in [nil, false, true] ->
-        parser |> with_expression(%Literal{value: type}) |> with_tokens(rest)
+        parser |> with_tokens(rest) |> with_expression(%Literal{value: type})
 
       [%Token{type: type, literal: literal} | rest] when type in [:number, :string] ->
-        parser |> with_expression(%Literal{value: literal}) |> with_tokens(rest)
+        parser |> with_tokens(rest) |> with_expression(%Literal{value: literal})
 
-      # [%Token{type: :left_paren} | rest] ->
-      #   case expression(rest, status) do
-      #     {[%Token{type: :right_paren} | rest], expression} -> {status, rest, expression}
-      #     [token | _] = tokens -> ExLox.error_at_token(token, "Expect ')' after expression.")
-      #   end
+      [%Token{type: :left_paren} | rest] ->
+        parser
+        |> with_tokens(rest)
+        |> expression()
+        |> case do
+          %Parser{tokens: [%Token{type: :right_paren} | rest]} = parser ->
+            parser
+            |> with_tokens(rest)
+            |> with_expression(%Grouping{expression: parser.expression})
+
+          %Parser{tokens: [%Token{} = token | rest]} = parser ->
+            ExLox.error_at_token(token, "Expect ')' after expression.")
+            parser |> with_tokens(rest) |> with_error()
+        end
 
       [token | rest] ->
         ExLox.error_at_token(token, "Expect expression.")
-        parser |> with_error() |> with_tokens(rest)
+        parser |> with_tokens(rest) |> with_error()
     end
   end
 
