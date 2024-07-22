@@ -12,6 +12,12 @@ defmodule ExLox.Scanner do
 
   defp scan_tokens_recursive(source, status \\ :ok, tokens \\ [], line \\ 1)
 
+  # stop when there is only a linefeed left (IO.puts always ends with a newline it seems)
+  defp scan_tokens_recursive("\n", status, tokens, line) do
+    {status, tokens, line}
+  end
+
+  # but also stop when the source doesn't end with a linefeed
   defp scan_tokens_recursive("", status, tokens, line) do
     {status, tokens, line}
   end
