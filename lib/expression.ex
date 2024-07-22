@@ -10,6 +10,7 @@ defmodule ExLox.Expr do
   end
 
   defmodule Literal do
+    @enforce_keys [:value]
     defstruct [:value]
   end
 
