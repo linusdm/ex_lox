@@ -1,5 +1,5 @@
 defmodule ExLox.CLI do
-  def main(args) do
+  def main(args \\ System.argv()) do
     case args do
       [] -> ExLox.run_prompt()
       [path] -> ExLox.run_file(path)

@@ -30,7 +30,7 @@ defmodule ExLox.MixProject do
   end
 
   defp aliases do
-    [lox: "run lib/main.exs"]
+    [lox: "eval ExLox.CLI.main"]
   end
 
   defp escript do
