@@ -21,9 +21,7 @@ defmodule ExLox do
   defp run(source) do
     with {status, tokens} <- ExLox.Scanner.scan_tokens(source),
          {:ok, expression} <- ExLox.Parser.parse(tokens, status) do
-      expression
-      |> ExLox.AstPrintable.to_string()
-      |> IO.puts()
+      IO.puts(expression)
     end
   end
 
