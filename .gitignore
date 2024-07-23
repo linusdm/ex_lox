@@ -27,3 +27,6 @@ ex_lox-*.tar
 
 /*.lox
 /todo.txt
+
+# escript binary
+/ex_lox
