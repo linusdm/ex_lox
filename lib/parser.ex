@@ -74,11 +74,15 @@ defmodule ExLox.Parser do
           %Parser{tokens: [%Token{} = token | rest]} = parser ->
             ExLox.error_at_token(token, "Expect ')' after expression.")
             parser |> with_tokens(rest) |> with_error()
+
+            # TODO: maybe we're not supposed to keep going, when things go wrong... jlox throws at this point in the parser
         end
 
       [token | rest] ->
         ExLox.error_at_token(token, "Expect expression.")
         parser |> with_tokens(rest) |> with_error()
+
+        # TODO: maybe we're not supposed to keep going, when things go wrong... jlox throws at this point in the parser
     end
   end
 
