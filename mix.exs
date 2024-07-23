@@ -8,7 +8,8 @@ defmodule ExLox.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      aliases: aliases()
+      aliases: aliases(),
+      escript: escript()
     ]
   end
 
@@ -30,5 +31,9 @@ defmodule ExLox.MixProject do
 
   defp aliases do
     [lox: "run lib/main.exs"]
+  end
+
+  defp escript do
+    [main_module: ExLox.CLI]
   end
 end
