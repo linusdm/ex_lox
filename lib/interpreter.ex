@@ -16,6 +16,12 @@ defmodule ExLox.Interpreter do
         raise Interpreter.RuntimeError, message: "Operand must be a number.", token: operator
       end
     end
+
+    def check_number_operands(operator, left_operand, right_operand) do
+      unless is_number(left_operand) and is_number(right_operand) do
+        raise Interpreter.RuntimeError, message: "Operands must be numbers.", token: operator
+      end
+    end
   end
 
   def interpret(expression) do
@@ -69,11 +75,42 @@ defmodule ExLox.Interpreter do
     defp is_truthy(_), do: true
   end
 
-  # defimpl Interpretable, for: ExLox.Expr.Binary do
-  #   def evaluate(%ExLox.Expr.Binary{} = expr) do
-  #     1
-  #   end
-  # end
+  defimpl Interpretable, for: ExLox.Expr.Binary do
+    import Interpreter.Util
+
+    def evaluate(%ExLox.Expr.Binary{} = expr) do
+      left = Interpretable.evaluate(expr.left)
+      right = Interpretable.evaluate(expr.right)
+
+      case expr.operator.type do
+        :minus ->
+          check_number_operands(expr.operator, left, right)
+          left - right
+
+        :plus ->
+          cond do
+            is_number(left) and is_number(right) ->
+              left + right
+
+            is_binary(left) and is_binary(right) ->
+              left <> right
+
+            true ->
+              raise Interpreter.RuntimeError,
+                message: "Operands must be two numbers or two strings.",
+                token: expr.operator
+          end
+
+        :slash ->
+          check_number_operands(expr.operator, left, right)
+          left / right
+
+        :star ->
+          check_number_operands(expr.operator, left, right)
+          left * right
+      end
+    end
+  end
 
   defp stringify(value) do
     cond do
