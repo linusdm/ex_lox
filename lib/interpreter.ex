@@ -83,6 +83,28 @@ defmodule ExLox.Interpreter do
       right = Interpretable.evaluate(expr.right)
 
       case expr.operator.type do
+        :bang_equal ->
+          left != right
+
+        :equal_equal ->
+          left == right
+
+        :greater ->
+          check_number_operands(expr.operator, left, right)
+          left > right
+
+        :greater_equal ->
+          check_number_operands(expr.operator, left, right)
+          left >= right
+
+        :less ->
+          check_number_operands(expr.operator, left, right)
+          left < right
+
+        :less_equal ->
+          check_number_operands(expr.operator, left, right)
+          left <= right
+
         :minus ->
           check_number_operands(expr.operator, left, right)
           left - right
@@ -103,6 +125,10 @@ defmodule ExLox.Interpreter do
 
         :slash ->
           check_number_operands(expr.operator, left, right)
+
+          # TODO: division by zero evaluates to NaN in jlox, and NaN == NaN (_not_ IEEE 754 compliant)
+          #       see page 103 (sidebar)
+          #       now this throws an ArithmeticError
           left / right
 
         :star ->
