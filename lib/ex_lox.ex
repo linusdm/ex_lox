@@ -1,7 +1,6 @@
 defmodule ExLox do
   def run_prompt do
     case IO.gets("> ") do
-      # TODO: werkt dit zo?
       :eof ->
         :ok
 
@@ -14,6 +13,7 @@ defmodule ExLox do
   def run_file(path) do
     case File.read!(path) |> run() do
       :error -> exit({:shutdown, 65})
+      :runtime_error -> exit({:shutdown, 70})
       :ok -> :ok
     end
   end
@@ -21,7 +21,10 @@ defmodule ExLox do
   defp run(source) do
     with {status, tokens} <- ExLox.Scanner.scan_tokens(source),
          {:ok, expression} <- ExLox.Parser.parse(tokens, status) do
-      IO.puts(expression)
+      case ExLox.Interpreter.interpret(expression) do
+        :error -> :runtime_error
+        result -> result
+      end
     end
   end
 
@@ -39,5 +42,9 @@ defmodule ExLox do
 
   defp report(line, where, msg) do
     IO.puts("[line #{line}] Error#{where}: #{msg}")
+  end
+
+  def runtime_error(%ExLox.Interpreter.RuntimeError{} = error) do
+    IO.puts("#{error.message} \n[line #{error.token.line}]")
   end
 end
