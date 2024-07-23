@@ -23,7 +23,7 @@ defmodule ExLox do
          {:ok, expression} <- ExLox.Parser.parse(tokens, status) do
       case ExLox.Interpreter.interpret(expression) do
         :error -> :runtime_error
-        result -> result
+        {:ok, _result} -> :ok
       end
     end
   end
