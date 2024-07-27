@@ -22,22 +22,22 @@ defmodule ExLox.Interpreter do
         raise Interpreter.RuntimeError, message: "Operands must be numbers.", token: operator
       end
     end
+
+    def stringify(value) do
+      cond do
+        value == nil -> "nil"
+        is_number(value) -> String.trim_trailing("#{value}", ".0")
+        true -> "#{value}"
+      end
+    end
   end
 
-  def interpret(expression) do
+  def interpret(statements) do
     try do
-      {:ok, Interpretable.evaluate(expression)}
+      Enum.each(statements, &Interpretable.evaluate/1)
     rescue
       e in RuntimeError ->
         ExLox.runtime_error(e)
-        :error
-    end
-    |> case do
-      {:ok, value} = result ->
-        value |> stringify() |> IO.puts()
-        result
-
-      :error ->
         :error
     end
   end
@@ -55,14 +55,12 @@ defmodule ExLox.Interpreter do
   end
 
   defimpl Interpretable, for: ExLox.Expr.Unary do
-    import Interpreter.Util
-
     def evaluate(%ExLox.Expr.Unary{} = expr) do
       right = Interpretable.evaluate(expr.right)
 
       case expr.operator.type do
         :minus ->
-          check_number_operand(expr.operator, right)
+          Util.check_number_operand(expr.operator, right)
           -right
 
         :bang ->
@@ -76,8 +74,6 @@ defmodule ExLox.Interpreter do
   end
 
   defimpl Interpretable, for: ExLox.Expr.Binary do
-    import Interpreter.Util
-
     def evaluate(%ExLox.Expr.Binary{} = expr) do
       left = Interpretable.evaluate(expr.left)
       right = Interpretable.evaluate(expr.right)
@@ -90,23 +86,23 @@ defmodule ExLox.Interpreter do
           left == right
 
         :greater ->
-          check_number_operands(expr.operator, left, right)
+          Util.check_number_operands(expr.operator, left, right)
           left > right
 
         :greater_equal ->
-          check_number_operands(expr.operator, left, right)
+          Util.check_number_operands(expr.operator, left, right)
           left >= right
 
         :less ->
-          check_number_operands(expr.operator, left, right)
+          Util.check_number_operands(expr.operator, left, right)
           left < right
 
         :less_equal ->
-          check_number_operands(expr.operator, left, right)
+          Util.check_number_operands(expr.operator, left, right)
           left <= right
 
         :minus ->
-          check_number_operands(expr.operator, left, right)
+          Util.check_number_operands(expr.operator, left, right)
           left - right
 
         :plus ->
@@ -124,7 +120,7 @@ defmodule ExLox.Interpreter do
           end
 
         :slash ->
-          check_number_operands(expr.operator, left, right)
+          Util.check_number_operands(expr.operator, left, right)
 
           # TODO: division by zero evaluates to NaN in jlox, and NaN == NaN (_not_ IEEE 754 compliant)
           #       see page 103 (sidebar)
@@ -132,17 +128,21 @@ defmodule ExLox.Interpreter do
           left / right
 
         :star ->
-          check_number_operands(expr.operator, left, right)
+          Util.check_number_operands(expr.operator, left, right)
           left * right
       end
     end
-  end
 
-  defp stringify(value) do
-    cond do
-      value == nil -> "nil"
-      is_number(value) -> String.trim_trailing("#{value}", ".0")
-      true -> "#{value}"
+    defimpl Interpretable, for: ExLox.Stmt.Expression do
+      def evaluate(%ExLox.Stmt.Expression{expression: expression}) do
+        Interpretable.evaluate(expression)
+      end
+    end
+
+    defimpl Interpretable, for: ExLox.Stmt.Print do
+      def evaluate(%ExLox.Stmt.Print{value: value}) do
+        value |> Interpretable.evaluate() |> Util.stringify() |> IO.puts()
+      end
     end
   end
 end

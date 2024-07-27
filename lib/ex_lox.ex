@@ -20,10 +20,10 @@ defmodule ExLox do
 
   defp run(source) do
     with {:ok, tokens} <- ExLox.Scanner.scan_tokens(source),
-         {:ok, expression} <- ExLox.Parser.parse(tokens) do
-      case ExLox.Interpreter.interpret(expression) do
+         {:ok, statements} <- ExLox.Parser.parse(tokens) do
+      case ExLox.Interpreter.interpret(statements) do
+        :ok -> :ok
         :error -> :runtime_error
-        {:ok, _result} -> :ok
       end
     end
   end

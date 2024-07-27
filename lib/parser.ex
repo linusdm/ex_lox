@@ -1,7 +1,8 @@
 defmodule ExLox.Parser do
   alias ExLox.Parser
   alias ExLox.Token
-  alias ExLox.Expr.{Binary, Literal, Unary, Grouping}
+  alias ExLox.Expr
+  alias ExLox.Stmt
 
   # tokens wrapped in a struct, because I suspect there will be more data that needs to be passed
   # down the parser (e.g. status)
@@ -11,15 +12,43 @@ defmodule ExLox.Parser do
     defexception [:message, :token]
   end
 
-  def parse(tokens) do
+  def parse(tokens) when is_list(tokens) do
+    parse(%Parser{tokens: tokens})
+  end
+
+  def parse(%Parser{} = parser, statements \\ []) do
     try do
-      {_, expr} = expression(%Parser{tokens: tokens})
-      {:ok, expr}
+      case statement(parser) do
+        {%Parser{tokens: [_]}, stmt} -> {:ok, Enum.reverse([stmt | statements])}
+        {parser, stmt} -> parse(parser, [stmt | statements])
+      end
     rescue
       e in ParseError ->
         ExLox.error_at_token(e.token, e.message)
         :error
     end
+  end
+
+  defp statement(%Parser{} = parser) do
+    case parser do
+      %Parser{tokens: [%Token{type: :print} | rest]} ->
+        parser |> with_tokens(rest) |> print_statement()
+
+      parser ->
+        expression_statement(parser)
+    end
+  end
+
+  defp print_statement(parser) do
+    {parser, expr} = expression(parser)
+    parser = consume_token(parser, :semicolon, "Expect ';' after value.")
+    {parser, %Stmt.Print{value: expr}}
+  end
+
+  defp expression_statement(parser) do
+    {parser, expr} = expression(parser)
+    parser = consume_token(parser, :semicolon, "Expect ';' after expression.")
+    {parser, %Stmt.Expression{expression: expr}}
   end
 
   defp expression(%Parser{} = parser) do
@@ -43,7 +72,7 @@ defmodule ExLox.Parser do
       recur = fn
         %{tokens: [token | rest]} = parser, expr, recur when token.type in unquote(token_types) ->
           {right_parser, right_expr} = parser |> with_tokens(rest) |> unquote(next_rule)()
-          expr = %Binary{left: expr, operator: token, right: right_expr}
+          expr = %Expr.Binary{left: expr, operator: token, right: right_expr}
           recur.(right_parser, expr, recur)
 
         parser, expr, _recur ->
@@ -59,7 +88,7 @@ defmodule ExLox.Parser do
     case parser do
       %Parser{tokens: [token | rest]} = parser when token.type in [:bang, :minus] ->
         {parser, expr} = parser |> with_tokens(rest) |> unary()
-        {parser, %Unary{operator: token, right: expr}}
+        {parser, %Expr.Unary{operator: token, right: expr}}
 
       parser ->
         primary(parser)
@@ -69,25 +98,28 @@ defmodule ExLox.Parser do
   defp primary(%Parser{} = parser) do
     case parser.tokens do
       [%Token{type: type} | rest] when type in [nil, false, true] ->
-        {with_tokens(parser, rest), %Literal{value: type}}
+        {with_tokens(parser, rest), %Expr.Literal{value: type}}
 
       [%Token{type: type, literal: literal} | rest] when type in [:number, :string] ->
-        {with_tokens(parser, rest), %Literal{value: literal}}
+        {with_tokens(parser, rest), %Expr.Literal{value: literal}}
 
       [%Token{type: :left_paren} | rest] ->
-        parser
-        |> with_tokens(rest)
-        |> expression()
-        |> case do
-          {%Parser{tokens: [%Token{type: :right_paren} | rest]} = parser, expr} ->
-            {with_tokens(parser, rest), %Grouping{expression: expr}}
-
-          {%Parser{tokens: [%Token{} = token | _rest]}, _expr} ->
-            raise ParseError, message: "Expect ')' after expression.", token: token
-        end
+        {parser, expr} = parser |> with_tokens(rest) |> expression()
+        parser = consume_token(parser, :left_paren, "Expect ')' after expression.")
+        {parser, %Expr.Grouping{expression: expr}}
 
       [token | _rest] ->
         raise ParseError, message: "Expect expression.", token: token
+    end
+  end
+
+  defp consume_token(%Parser{} = parser, token_type, error_msg) do
+    case parser do
+      %Parser{tokens: [%Token{type: ^token_type} | rest]} ->
+        with_tokens(parser, rest)
+
+      %Parser{tokens: [token | _]} ->
+        raise ParseError, message: error_msg, token: token
     end
   end
 
