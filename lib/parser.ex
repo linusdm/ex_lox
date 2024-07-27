@@ -4,8 +4,8 @@ defmodule ExLox.Parser do
   alias ExLox.Expr
   alias ExLox.Stmt
 
-  # tokens wrapped in a struct, because I suspect there will be more data that needs to be passed
-  # down the parser (e.g. status)
+  # tokens are wrapped in a struct because I suspect there will be more data that needs to be passed
+  # down the parser later (e.g. status)
   defstruct [:tokens]
 
   defmodule ParseError do
@@ -105,7 +105,7 @@ defmodule ExLox.Parser do
 
       [%Token{type: :left_paren} | rest] ->
         {parser, expr} = parser |> with_tokens(rest) |> expression()
-        parser = consume_token(parser, :left_paren, "Expect ')' after expression.")
+        parser = consume_token(parser, :right_paren, "Expect ')' after expression.")
         {parser, %Expr.Grouping{expression: expr}}
 
       [token | _rest] ->
