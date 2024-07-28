@@ -10,7 +10,7 @@ defmodule ExLox.Parser do
   end
 
   def parse(tokens, status \\ :ok) do
-    {%Parser{} = parser, statements} = parse_recursive(%Parser{tokens: tokens, status: status})
+    {parser, statements} = parse_recursive(%Parser{tokens: tokens, status: status})
     {parser.status, Enum.reverse(statements)}
   end
 
@@ -41,10 +41,14 @@ defmodule ExLox.Parser do
     end
   end
 
+  @start_of_statement_types [:class, :for, :fun, :if, :print, :return, :var, :while]
   defp synchronize(%Parser{} = parser) do
-    # TODO: implement synchronization (see p. 92)
-    # the first token is still the one in error
-    parser
+    case parser.tokens do
+      [%Token{type: :semicolon} | rest] -> parser |> with_tokens(rest)
+      [%Token{type: type} | _rest] when type in @start_of_statement_types -> parser
+      [%Token{type: :eof}] -> parser
+      [_skipped_token | rest] -> parser |> with_tokens(rest) |> synchronize()
+    end
   end
 
   defp var_declaration(%Parser{} = parser) do

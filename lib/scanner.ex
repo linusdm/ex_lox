@@ -1,12 +1,7 @@
 defmodule ExLox.Scanner do
   def scan_tokens(source) do
-    case scan_tokens_recursive(source) do
-      {:error, _tokens, _last_line} ->
-        :error
-
-      {:ok, tokens, last_line} ->
-        {:ok, tokens |> add_token(:eof, "", last_line) |> Enum.reverse()}
-    end
+    {status, tokens, last_line} = scan_tokens_recursive(source)
+    {status, tokens |> add_token(:eof, "", last_line) |> Enum.reverse()}
   end
 
   defguardp is_whitespace(char) when char in [" ", "\r", "\t"]
