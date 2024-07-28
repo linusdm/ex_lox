@@ -10,8 +10,10 @@ defmodule ExLox.Parser do
   end
 
   def parse(tokens, status \\ :ok) do
-    {parser, statements} = parse_recursive(%Parser{tokens: tokens, status: status})
-    {parser.status, Enum.reverse(statements)}
+    case parse_recursive(%Parser{tokens: tokens, status: status}) do
+      {%Parser{status: :ok}, statements} -> {:ok, Enum.reverse(statements)}
+      {%Parser{status: :error}, _statements_ignored} -> :error
+    end
   end
 
   defp parse_recursive(%Parser{} = parser, statements \\ []) do

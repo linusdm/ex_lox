@@ -1,25 +1,21 @@
 defmodule ExLox.Interpreter do
-  alias __MODULE__
+  alias ExLox.RuntimeError
 
   defprotocol Interpretable do
     @spec evaluate(t) :: any()
     def evaluate(expression)
   end
 
-  defmodule RuntimeError do
-    defexception [:message, :token]
-  end
-
   defmodule Util do
     def check_number_operand(operator, operand) do
       if not is_number(operand) do
-        raise Interpreter.RuntimeError, message: "Operand must be a number.", token: operator
+        raise RuntimeError, message: "Operand must be a number.", token: operator
       end
     end
 
     def check_number_operands(operator, left_operand, right_operand) do
       unless is_number(left_operand) and is_number(right_operand) do
-        raise Interpreter.RuntimeError, message: "Operands must be numbers.", token: operator
+        raise RuntimeError, message: "Operands must be numbers.", token: operator
       end
     end
 
@@ -114,7 +110,7 @@ defmodule ExLox.Interpreter do
               left <> right
 
             true ->
-              raise Interpreter.RuntimeError,
+              raise RuntimeError,
                 message: "Operands must be two numbers or two strings.",
                 token: expr.operator
           end

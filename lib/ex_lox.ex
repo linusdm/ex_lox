@@ -44,7 +44,7 @@ defmodule ExLox do
     IO.puts("[line #{line}] Error#{where}: #{msg}")
   end
 
-  def runtime_error(%ExLox.Interpreter.RuntimeError{} = error) do
+  def runtime_error(%ExLox.RuntimeError{} = error) do
     IO.puts("#{error.message} \n[line #{error.token.line}]")
   end
 end
