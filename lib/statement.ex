@@ -8,4 +8,9 @@ defmodule ExLox.Stmt do
     @enforce_keys [:value]
     defstruct [:value]
   end
+
+  defmodule Var do
+    @enforce_keys [:name, :initializer]
+    defstruct [:name, :initializer]
+  end
 end

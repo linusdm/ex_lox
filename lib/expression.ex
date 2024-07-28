@@ -18,4 +18,9 @@ defmodule ExLox.Expr do
     @enforce_keys [:operator, :right]
     defstruct [:operator, :right]
   end
+
+  defmodule Variable do
+    @enforce_keys [:name]
+    defstruct [:name]
+  end
 end

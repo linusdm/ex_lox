@@ -1,32 +1,66 @@
 defmodule ExLox.Parser do
-  alias ExLox.Parser
-  alias ExLox.Token
-  alias ExLox.Expr
-  alias ExLox.Stmt
+  alias __MODULE__
+  alias ExLox.{Token, Expr, Stmt}
 
-  # tokens are wrapped in a struct because I suspect there will be more data that needs to be passed
-  # down the parser later (e.g. status)
-  defstruct [:tokens]
+  @enforce_keys [:tokens, :status]
+  defstruct [:tokens, :status]
 
   defmodule ParseError do
-    defexception [:message, :token]
+    defexception [:message, :parser]
   end
 
-  def parse(tokens) when is_list(tokens) do
-    parse(%Parser{tokens: tokens})
+  def parse(tokens, status \\ :ok) do
+    {%Parser{} = parser, statements} = parse_recursive(%Parser{tokens: tokens, status: status})
+    {parser.status, Enum.reverse(statements)}
   end
 
-  def parse(%Parser{} = parser, statements \\ []) do
+  defp parse_recursive(%Parser{} = parser, statements \\ []) do
+    {parser, stmt} = declaration(parser)
+    statements = if stmt, do: [stmt | statements], else: statements
+
+    case parser.tokens do
+      [%Token{type: :eof}] -> {parser, statements}
+      _ -> parse_recursive(parser, statements)
+    end
+  end
+
+  defp declaration(%Parser{} = parser) do
     try do
-      case statement(parser) do
-        {%Parser{tokens: [_]}, stmt} -> {:ok, Enum.reverse([stmt | statements])}
-        {parser, stmt} -> parse(parser, [stmt | statements])
+      case parser do
+        %Parser{tokens: [%Token{type: :var} | rest]} ->
+          parser |> with_tokens(rest) |> var_declaration()
+
+        parser ->
+          statement(parser)
       end
     rescue
       e in ParseError ->
-        ExLox.error_at_token(e.token, e.message)
-        :error
+        %{parser: %Parser{tokens: [token | _rest]} = parser} = e
+        ExLox.error_at_token(token, e.message)
+        {parser |> with_error() |> synchronize(), nil}
     end
+  end
+
+  defp synchronize(%Parser{} = parser) do
+    # TODO: implement synchronization (see p. 92)
+    # the first token is still the one in error
+    parser
+  end
+
+  defp var_declaration(%Parser{} = parser) do
+    {parser, name} = consume_token(parser, :identifier, "Expect variable name.")
+
+    {parser, initializer} =
+      case parser do
+        %Parser{tokens: [%Token{type: :equal} | rest]} ->
+          parser |> with_tokens(rest) |> expression()
+
+        _ ->
+          {parser, nil}
+      end
+
+    {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after variable declaration.")
+    {parser, %Stmt.Var{name: name, initializer: initializer}}
   end
 
   defp statement(%Parser{} = parser) do
@@ -41,13 +75,13 @@ defmodule ExLox.Parser do
 
   defp print_statement(parser) do
     {parser, expr} = expression(parser)
-    parser = consume_token(parser, :semicolon, "Expect ';' after value.")
+    {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after value.")
     {parser, %Stmt.Print{value: expr}}
   end
 
   defp expression_statement(parser) do
     {parser, expr} = expression(parser)
-    parser = consume_token(parser, :semicolon, "Expect ';' after expression.")
+    {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after expression.")
     {parser, %Stmt.Expression{expression: expr}}
   end
 
@@ -103,25 +137,29 @@ defmodule ExLox.Parser do
       [%Token{type: type, literal: literal} | rest] when type in [:number, :string] ->
         {with_tokens(parser, rest), %Expr.Literal{value: literal}}
 
+      [%Token{type: :identifier} = name | rest] ->
+        {with_tokens(parser, rest), %Expr.Variable{name: name}}
+
       [%Token{type: :left_paren} | rest] ->
         {parser, expr} = parser |> with_tokens(rest) |> expression()
-        parser = consume_token(parser, :right_paren, "Expect ')' after expression.")
+        {parser, _token} = consume_token(parser, :right_paren, "Expect ')' after expression.")
         {parser, %Expr.Grouping{expression: expr}}
 
-      [token | _rest] ->
-        raise ParseError, message: "Expect expression.", token: token
+      _tokens ->
+        raise ParseError, message: "Expect expression.", parser: parser
     end
   end
 
   defp consume_token(%Parser{} = parser, token_type, error_msg) do
     case parser do
-      %Parser{tokens: [%Token{type: ^token_type} | rest]} ->
-        with_tokens(parser, rest)
+      %Parser{tokens: [%Token{type: ^token_type} = token | rest]} ->
+        {with_tokens(parser, rest), token}
 
-      %Parser{tokens: [token | _]} ->
-        raise ParseError, message: error_msg, token: token
+      parser ->
+        raise ParseError, message: error_msg, parser: parser
     end
   end
 
   defp with_tokens(%Parser{} = parser, tokens), do: %{parser | tokens: tokens}
+  defp with_error(%Parser{} = parser), do: %{parser | status: :error}
 end
