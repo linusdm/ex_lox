@@ -1,12 +1,16 @@
 defmodule ExLox do
-  def run_prompt do
+  alias ExLox.Environment
+
+  def run_prompt(env \\ Environment.new()) do
     case IO.gets("> ") do
       :eof ->
         :ok
 
       source ->
-        run(source)
-        run_prompt()
+        case run(source, env) do
+          {:ok, updated_env} -> run_prompt(updated_env)
+          _ -> run_prompt(env)
+        end
     end
   end
 
@@ -14,15 +18,15 @@ defmodule ExLox do
     case File.read!(path) |> run() do
       :error -> exit({:shutdown, 65})
       :runtime_error -> exit({:shutdown, 70})
-      :ok -> :ok
+      {:ok, _env} -> :ok
     end
   end
 
-  defp run(source) do
+  defp run(source, env \\ Environment.new()) do
     with {scan_status, tokens} <- ExLox.Scanner.scan_tokens(source),
          {:ok, statements} <- ExLox.Parser.parse(tokens, scan_status) do
-      case ExLox.Interpreter.interpret(statements) do
-        :ok -> :ok
+      case ExLox.Interpreter.interpret(statements, env) do
+        {:ok, env} -> {:ok, env}
         :error -> :runtime_error
       end
     end
