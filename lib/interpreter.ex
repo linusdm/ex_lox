@@ -140,6 +140,13 @@ defmodule ExLox.Interpreter do
       end
     end
 
+    defimpl Interpretable, for: ExLox.Expr.Assign do
+      def evaluate(%ExLox.Expr.Assign{} = expr, env) do
+        {value, env} = Interpretable.evaluate(expr.value, env)
+        {value, Environment.assign(env, expr.name, value)}
+      end
+    end
+
     defimpl Interpretable, for: ExLox.Stmt.Expression do
       def evaluate(%ExLox.Stmt.Expression{expression: expression}, env) do
         {_result, env} = Interpretable.evaluate(expression, env)

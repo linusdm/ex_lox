@@ -23,4 +23,9 @@ defmodule ExLox.Expr do
     @enforce_keys [:name]
     defstruct [:name]
   end
+
+  defmodule Assign do
+    @enforce_keys [:name, :value]
+    defstruct [:name, :value]
+  end
 end

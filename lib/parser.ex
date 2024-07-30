@@ -79,20 +79,41 @@ defmodule ExLox.Parser do
     end
   end
 
-  defp print_statement(parser) do
+  defp print_statement(%Parser{} = parser) do
     {parser, expr} = expression(parser)
     {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after value.")
     {parser, %Stmt.Print{value: expr}}
   end
 
-  defp expression_statement(parser) do
+  defp expression_statement(%Parser{} = parser) do
     {parser, expr} = expression(parser)
     {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after expression.")
     {parser, %Stmt.Expression{expression: expr}}
   end
 
   defp expression(%Parser{} = parser) do
-    equality(parser)
+    assignment(parser)
+  end
+
+  defp assignment(%Parser{} = parser) do
+    {parser, expr} = equality(parser)
+
+    case parser.tokens do
+      [%Token{type: :equal} = equals | rest] ->
+        {parser, value} = parser |> with_tokens(rest) |> assignment()
+
+        case expr do
+          %Expr.Variable{name: name} ->
+            {parser, %Expr.Assign{name: name, value: value}}
+
+          _ ->
+            ExLox.error_at_token(equals, "Invalid assignment target.")
+            {with_error(parser), expr}
+        end
+
+      _ ->
+        {parser, expr}
+    end
   end
 
   @binary_rules equality: [:bang_equal, :equal_equal],
