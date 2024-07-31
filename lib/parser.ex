@@ -16,14 +16,15 @@ defmodule ExLox.Parser do
     end
   end
 
-  defp parse_recursive(%Parser{} = parser, statements \\ []) do
-    {parser, stmt} = declaration(parser)
-    statements = [stmt | statements]
+  defp parse_recursive(parser, statements \\ [])
 
-    case parser.tokens do
-      [%Token{type: :eof}] -> {parser, statements}
-      _ -> parse_recursive(parser, statements)
-    end
+  defp parse_recursive(%Parser{tokens: [%Token{type: :eof}]} = parser, statements) do
+    {parser, statements}
+  end
+
+  defp parse_recursive(%Parser{} = parser, statements) do
+    {parser, stmt} = declaration(parser)
+    parse_recursive(parser, [stmt | statements])
   end
 
   defp declaration(%Parser{} = parser) do
