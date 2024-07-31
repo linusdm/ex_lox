@@ -170,5 +170,12 @@ defmodule ExLox.Interpreter do
         Environment.define(env, name, value)
       end
     end
+
+    defimpl Interpretable, for: ExLox.Stmt.Block do
+      def evaluate(%ExLox.Stmt.Block{statements: statements}, env) do
+        Enum.reduce(statements, Environment.new(env), &Interpretable.evaluate/2)
+        env
+      end
+    end
   end
 end

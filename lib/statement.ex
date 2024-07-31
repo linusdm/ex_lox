@@ -13,4 +13,9 @@ defmodule ExLox.Stmt do
     @enforce_keys [:name, :initializer]
     defstruct [:name, :initializer]
   end
+
+  defmodule Block do
+    @enforce_keys [:statements]
+    defstruct [:statements]
+  end
 end

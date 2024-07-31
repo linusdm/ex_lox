@@ -12,13 +12,13 @@ defmodule ExLox.Parser do
   def parse(tokens, status \\ :ok) do
     case parse_recursive(%Parser{tokens: tokens, status: status}) do
       {%Parser{status: :ok}, statements} -> {:ok, Enum.reverse(statements)}
-      {%Parser{status: :error}, _statements_ignored} -> :error
+      {%Parser{status: :error}, _ignored} -> :error
     end
   end
 
   defp parse_recursive(%Parser{} = parser, statements \\ []) do
     {parser, stmt} = declaration(parser)
-    statements = if stmt, do: [stmt | statements], else: statements
+    statements = [stmt | statements]
 
     case parser.tokens do
       [%Token{type: :eof}] -> {parser, statements}
@@ -39,7 +39,7 @@ defmodule ExLox.Parser do
       e in ParseError ->
         %{parser: %Parser{tokens: [token | _rest]} = parser} = e
         ExLox.error_at_token(token, e.message)
-        {parser |> with_error() |> synchronize(), nil}
+        {parser |> with_error() |> synchronize(), :statement_with_parse_error}
     end
   end
 
@@ -74,6 +74,10 @@ defmodule ExLox.Parser do
       %Parser{tokens: [%Token{type: :print} | rest]} ->
         parser |> with_tokens(rest) |> print_statement()
 
+      %Parser{tokens: [%Token{type: :left_brace} | rest]} ->
+        {parser, statements} = parser |> with_tokens(rest) |> block()
+        {parser, %Stmt.Block{statements: statements}}
+
       parser ->
         expression_statement(parser)
     end
@@ -89,6 +93,23 @@ defmodule ExLox.Parser do
     {parser, expr} = expression(parser)
     {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after expression.")
     {parser, %Stmt.Expression{expression: expr}}
+  end
+
+  defp block(%Parser{} = parser) do
+    parse_recursive = fn
+      %Parser{tokens: [%Token{type: type} | _]} = parser, statements, _recur
+      when type in [:eof, :right_brace] ->
+        {parser, statements}
+
+      parser, statements, recur ->
+        {parser, stmt} = declaration(parser)
+        recur.(parser, [stmt | statements], recur)
+    end
+
+    {parser, statements} = parse_recursive.(parser, [], parse_recursive)
+
+    {parser, _token} = consume_token(parser, :right_brace, "Expect '}' after block.")
+    {parser, Enum.reverse(statements)}
   end
 
   defp expression(%Parser{} = parser) do
