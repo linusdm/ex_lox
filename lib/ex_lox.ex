@@ -45,10 +45,10 @@ defmodule ExLox do
   end
 
   defp report(line, where, msg) do
-    IO.puts("[line #{line}] Error#{where}: #{msg}")
+    IO.puts(:stderr, "[line #{line}] Error#{where}: #{msg}")
   end
 
   def runtime_error(%ExLox.RuntimeError{} = error) do
-    IO.puts("#{error.message} \n[line #{error.token.line}]")
+    IO.puts(:stderr, "#{error.message}\n[line #{error.token.line}]")
   end
 end
