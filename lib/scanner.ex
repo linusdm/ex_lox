@@ -53,7 +53,7 @@ defmodule ExLox.Scanner do
     {status, tokens, line, rest} =
       case source do
         <<"//", rest::binary>> ->
-          {status, tokens, line, consume_rest_of_line(rest)}
+          {status, tokens, line + 1, consume_rest_of_line(rest)}
 
         <<lexeme::binary-size(2), rest::binary>> when lexeme in @two_char_lexemes ->
           {status, add_token(tokens, @lexemes_to_types[lexeme], lexeme, line), line, rest}
