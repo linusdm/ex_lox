@@ -27,6 +27,8 @@ defmodule ExLox.Interpreter do
         true -> "#{value}"
       end
     end
+
+    def is_truthy(value), do: value not in [false, nil]
   end
 
   def interpret(statements, env) do
@@ -62,13 +64,9 @@ defmodule ExLox.Interpreter do
           {-right, env}
 
         :bang ->
-          {not is_truthy(right), env}
+          {not Util.is_truthy(right), env}
       end
     end
-
-    defp is_truthy(nil), do: false
-    defp is_truthy(bool) when is_boolean(bool), do: bool
-    defp is_truthy(_), do: true
   end
 
   defimpl Interpretable, for: ExLox.Expr.Binary do
@@ -151,6 +149,23 @@ defmodule ExLox.Interpreter do
       def evaluate(%ExLox.Stmt.Expression{expression: expression}, env) do
         {_result, env} = Interpretable.evaluate(expression, env)
         env
+      end
+    end
+
+    defimpl Interpretable, for: ExLox.Stmt.If do
+      def evaluate(%ExLox.Stmt.If{} = stmt, env) do
+        {condition_value, env} = Interpretable.evaluate(stmt.condition, env)
+
+        cond do
+          Util.is_truthy(condition_value) ->
+            Interpretable.evaluate(stmt.then_branch, env)
+
+          stmt.else_branch ->
+            Interpretable.evaluate(stmt.else_branch, env)
+
+          true ->
+            env
+        end
       end
     end
 

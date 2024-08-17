@@ -4,6 +4,11 @@ defmodule ExLox.Stmt do
     defstruct [:expression]
   end
 
+  defmodule If do
+    @enforce_keys [:condition, :then_branch, :else_branch]
+    defstruct [:condition, :then_branch, :else_branch]
+  end
+
   defmodule Print do
     @enforce_keys [:value]
     defstruct [:value]

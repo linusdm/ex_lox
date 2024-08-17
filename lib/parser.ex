@@ -47,10 +47,17 @@ defmodule ExLox.Parser do
   @start_of_statement_types [:class, :for, :fun, :if, :print, :return, :var, :while]
   defp synchronize(%Parser{} = parser) do
     case parser.tokens do
-      [%Token{type: :semicolon} | rest] -> parser |> with_tokens(rest)
-      [%Token{type: type} | _rest] when type in @start_of_statement_types -> parser
-      [%Token{type: :eof}] -> parser
-      [_skipped_token | rest] -> parser |> with_tokens(rest) |> synchronize()
+      [%Token{type: :semicolon} | rest] ->
+        parser |> with_tokens(rest)
+
+      [_skipped, token | rest] when token.type in @start_of_statement_types ->
+        parser |> with_tokens([token | rest])
+
+      [_skipped, %Token{type: :eof} = eof] ->
+        parser |> with_tokens([eof])
+
+      [_skipped | rest] ->
+        parser |> with_tokens(rest) |> synchronize()
     end
   end
 
@@ -72,6 +79,9 @@ defmodule ExLox.Parser do
 
   defp statement(%Parser{} = parser) do
     case parser do
+      %Parser{tokens: [%Token{type: :if} | rest]} ->
+        parser |> with_tokens(rest) |> if_statement()
+
       %Parser{tokens: [%Token{type: :print} | rest]} ->
         parser |> with_tokens(rest) |> print_statement()
 
@@ -82,6 +92,24 @@ defmodule ExLox.Parser do
       parser ->
         expression_statement(parser)
     end
+  end
+
+  defp if_statement(%Parser{} = parser) do
+    {parser, _token} = consume_token(parser, :left_paren, "Expect '(' after 'if'.")
+    {parser, condition} = expression(parser)
+    {parser, _token} = consume_token(parser, :right_paren, "Expect ')' after if condition.")
+    {parser, then_branch} = statement(parser)
+
+    {parser, else_branch} =
+      case parser do
+        %Parser{tokens: [%Token{type: :else} | rest]} ->
+          parser |> with_tokens(rest) |> statement()
+
+        parser ->
+          {parser, nil}
+      end
+
+    {parser, %Stmt.If{condition: condition, then_branch: then_branch, else_branch: else_branch}}
   end
 
   defp print_statement(%Parser{} = parser) do
