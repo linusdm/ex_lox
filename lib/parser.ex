@@ -146,7 +146,7 @@ defmodule ExLox.Parser do
   end
 
   defp assignment(%Parser{} = parser) do
-    {parser, expr} = equality(parser)
+    {parser, expr} = or_(parser)
 
     case parser.tokens do
       [%Token{type: :equal} = equals | rest] ->
@@ -166,16 +166,14 @@ defmodule ExLox.Parser do
     end
   end
 
-  @binary_rules equality: [:bang_equal, :equal_equal],
-                comparison: [:greater, :greater_equal, :less, :less_equal],
-                term: [:minus, :plus],
-                factor: [:slash, :star]
+  @binary_rules or_: {[:or], :and_, Expr.Logical},
+                and_: {[:and], :equality, Expr.Logical},
+                equality: {[:bang_equal, :equal_equal], :comparison, Expr.Binary},
+                comparison: {[:greater, :greater_equal, :less, :less_equal], :term, Expr.Binary},
+                term: {[:minus, :plus], :factor, Expr.Binary},
+                factor: {[:slash, :star], :unary, Expr.Binary}
 
-  for {rule, token_types} <- @binary_rules do
-    rules = Keyword.keys(@binary_rules)
-    rule_index = Enum.find_index(rules, &(&1 == rule))
-    next_rule = Enum.at(rules, rule_index + 1, :unary)
-
+  for {rule, {token_types, next_rule, expr_struct}} <- @binary_rules do
     defp unquote(rule)(%Parser{} = parser) do
       # It's impossible to call an anonymous function recursively by name.
       # This trick allows to call the passed in anonymous function recursively.
@@ -183,7 +181,7 @@ defmodule ExLox.Parser do
       recur = fn
         %{tokens: [token | rest]} = parser, expr, recur when token.type in unquote(token_types) ->
           {right_parser, right_expr} = parser |> with_tokens(rest) |> unquote(next_rule)()
-          expr = %Expr.Binary{left: expr, operator: token, right: right_expr}
+          expr = %unquote(expr_struct){left: expr, operator: token, right: right_expr}
           recur.(right_parser, expr, recur)
 
         parser, expr, _recur ->

@@ -14,6 +14,11 @@ defmodule ExLox.Expr do
     defstruct [:value]
   end
 
+  defmodule Logical do
+    @enforce_keys [:left, :operator, :right]
+    defstruct [:left, :operator, :right]
+  end
+
   defmodule Unary do
     @enforce_keys [:operator, :right]
     defstruct [:operator, :right]

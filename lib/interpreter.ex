@@ -48,6 +48,20 @@ defmodule ExLox.Interpreter do
     end
   end
 
+  defimpl Interpretable, for: ExLox.Expr.Logical do
+    def evaluate(%ExLox.Expr.Logical{} = expr, env) do
+      {left, env} = Interpretable.evaluate(expr.left, env)
+
+      short_circuit? =
+        case expr.operator.type do
+          :or -> Util.is_truthy(left)
+          :and -> not Util.is_truthy(left)
+        end
+
+      if short_circuit?, do: {left, env}, else: Interpretable.evaluate(expr.right, env)
+    end
+  end
+
   defimpl Interpretable, for: ExLox.Expr.Grouping do
     def evaluate(%ExLox.Expr.Grouping{expression: expression}, env) do
       Interpretable.evaluate(expression, env)
