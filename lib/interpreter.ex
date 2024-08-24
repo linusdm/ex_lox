@@ -202,8 +202,8 @@ defmodule ExLox.Interpreter do
 
     defimpl Interpretable, for: ExLox.Stmt.Block do
       def evaluate(%ExLox.Stmt.Block{statements: statements}, env) do
-        Enum.reduce(statements, Environment.new(env), &Interpretable.evaluate/2)
-        env
+        env = Enum.reduce(statements, Environment.new(env), &Interpretable.evaluate/2)
+        env.enclosing
       end
     end
   end
