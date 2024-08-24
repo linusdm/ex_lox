@@ -191,6 +191,19 @@ defmodule ExLox.Interpreter do
       end
     end
 
+    defimpl Interpretable, for: ExLox.Stmt.While do
+      def evaluate(%ExLox.Stmt.While{condition: condition, body: body} = stmt, env) do
+        {condition, env} = Interpretable.evaluate(condition, env)
+
+        if Util.is_truthy(condition) do
+          env = Interpretable.evaluate(body, env)
+          Interpretable.evaluate(stmt, env)
+        else
+          env
+        end
+      end
+    end
+
     defimpl Interpretable, for: ExLox.Stmt.Var do
       def evaluate(%ExLox.Stmt.Var{name: name, initializer: initializer}, env) do
         {value, env} =

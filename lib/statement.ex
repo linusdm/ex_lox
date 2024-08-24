@@ -23,4 +23,9 @@ defmodule ExLox.Stmt do
     @enforce_keys [:statements]
     defstruct [:statements]
   end
+
+  defmodule While do
+    @enforce_keys [:condition, :body]
+    defstruct [:condition, :body]
+  end
 end

@@ -85,6 +85,9 @@ defmodule ExLox.Parser do
       %Parser{tokens: [%Token{type: :print} | rest]} ->
         parser |> with_tokens(rest) |> print_statement()
 
+      %Parser{tokens: [%Token{type: :while} | rest]} ->
+        parser |> with_tokens(rest) |> while_statement()
+
       %Parser{tokens: [%Token{type: :left_brace} | rest]} ->
         {parser, statements} = parser |> with_tokens(rest) |> block()
         {parser, %Stmt.Block{statements: statements}}
@@ -116,6 +119,15 @@ defmodule ExLox.Parser do
     {parser, expr} = expression(parser)
     {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after value.")
     {parser, %Stmt.Print{value: expr}}
+  end
+
+  defp while_statement(%Parser{} = parser) do
+    {parser, _token} = consume_token(parser, :left_paren, "Expect '(' after 'while'.")
+    {parser, condition} = expression(parser)
+    {parser, _token} = consume_token(parser, :right_paren, "Expect ')' after condition.")
+    {parser, body} = statement(parser)
+
+    {parser, %Stmt.While{condition: condition, body: body}}
   end
 
   defp expression_statement(%Parser{} = parser) do
