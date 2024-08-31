@@ -79,6 +79,9 @@ defmodule ExLox.Parser do
 
   defp statement(%Parser{} = parser) do
     case parser do
+      %Parser{tokens: [%Token{type: :for} | rest]} ->
+        parser |> with_tokens(rest) |> for_statement()
+
       %Parser{tokens: [%Token{type: :if} | rest]} ->
         parser |> with_tokens(rest) |> if_statement()
 
@@ -95,6 +98,64 @@ defmodule ExLox.Parser do
       parser ->
         expression_statement(parser)
     end
+  end
+
+  defp for_statement(%Parser{} = parser) do
+    {parser, _token} = consume_token(parser, :left_paren, "Expect '(' after 'for'.")
+
+    {parser, initializer} =
+      case parser do
+        %Parser{tokens: [%Token{type: :semicolon} | rest]} ->
+          {with_tokens(parser, rest), nil}
+
+        %Parser{tokens: [%Token{type: :var} | rest]} ->
+          parser |> with_tokens(rest) |> var_declaration()
+
+        parser ->
+          expression_statement(parser)
+      end
+
+    {parser, condition} =
+      case parser do
+        %Parser{tokens: [%Token{type: :semicolon} | _rest]} ->
+          {parser, %Expr.Literal{value: true}}
+
+        parser ->
+          expression(parser)
+      end
+
+    {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after loop condition.")
+
+    {parser, increment} =
+      case parser do
+        %Parser{tokens: [%Token{type: :right_paren} | _rest]} ->
+          {parser, nil}
+
+        parser ->
+          expression(parser)
+      end
+
+    {parser, _token} = consume_token(parser, :right_paren, "Expect ')' after for clauses.")
+
+    {parser, body} = statement(parser)
+
+    body =
+      if increment do
+        %Stmt.Block{statements: [body, %Stmt.Expression{expression: increment}]}
+      else
+        body
+      end
+
+    body = %Stmt.While{condition: condition, body: body}
+
+    body =
+      if initializer do
+        %Stmt.Block{statements: [initializer, body]}
+      else
+        body
+      end
+
+    {parser, body}
   end
 
   defp if_statement(%Parser{} = parser) do
