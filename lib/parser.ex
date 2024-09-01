@@ -273,7 +273,44 @@ defmodule ExLox.Parser do
         {parser, %Expr.Unary{operator: token, right: expr}}
 
       parser ->
-        primary(parser)
+        call(parser)
+    end
+  end
+
+  defp call(%Parser{} = parser) do
+    {parser, expr} = primary(parser)
+
+    recur = fn
+      %Parser{tokens: [%Token{type: :left_paren} | rest]} = parser, expr, recur ->
+        parser = with_tokens(parser, rest)
+        {parser, expr} = finish_call(parser, expr)
+        recur.(parser, expr, recur)
+
+      parser, expr, _recur ->
+        {parser, expr}
+    end
+
+    recur.(parser, expr, recur)
+  end
+
+  defp finish_call(parser, callee) do
+    {parser, arguments} = arguments(parser)
+    {parser, paren} = consume_token(parser, :right_paren, "Expect ')' after arguments.")
+    {parser, %Expr.Call{callee: callee, paren: paren, arguments: arguments}}
+  end
+
+  defp arguments(parser, arguments \\ []) do
+    case parser do
+      %Parser{tokens: [%Token{type: :right_paren} | _rest]} ->
+        {parser, Enum.reverse(arguments)}
+
+      %Parser{tokens: [%Token{type: :comma} | rest]} ->
+        {parser, arg} = parser |> with_tokens(rest) |> expression()
+        arguments(parser, [arg | arguments])
+
+      parser ->
+        {parser, arg} = expression(parser)
+        arguments(parser, [arg | arguments])
     end
   end
 

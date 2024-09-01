@@ -4,6 +4,11 @@ defmodule ExLox.Expr do
     defstruct [:left, :operator, :right]
   end
 
+  defmodule Call do
+    @enforce_keys [:callee, :paren, :arguments]
+    defstruct [:callee, :paren, :arguments]
+  end
+
   defmodule Grouping do
     @enforce_keys [:expression]
     defstruct [:expression]
