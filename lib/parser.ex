@@ -53,7 +53,7 @@ defmodule ExLox.Parser do
       [_skipped, token | rest] when token.type in @start_of_statement_types ->
         parser |> with_tokens([token | rest])
 
-      [_skipped, %Token{type: :eof} = eof] ->
+      [%Token{type: :eof} = eof] ->
         parser |> with_tokens([eof])
 
       [_skipped | rest] ->
@@ -299,18 +299,39 @@ defmodule ExLox.Parser do
     {parser, %Expr.Call{callee: callee, paren: paren, arguments: arguments}}
   end
 
-  defp arguments(parser, arguments \\ []) do
+  defp arguments(parser, arguments \\ [])
+
+  defp arguments(parser, []) do
+    case parser do
+      %Parser{tokens: [%Token{type: :right_paren} | _rest]} ->
+        {parser, []}
+
+      parser ->
+        {parser, arg} = expression(parser)
+        arguments(parser, [arg])
+    end
+  end
+
+  defp arguments(parser, arguments) do
     case parser do
       %Parser{tokens: [%Token{type: :right_paren} | _rest]} ->
         {parser, Enum.reverse(arguments)}
 
       %Parser{tokens: [%Token{type: :comma} | rest]} ->
+        parser =
+          if length(arguments) >= 255 do
+            ExLox.error_at_token(hd(rest), "Can't have more than 255 arguments.")
+            with_error(parser)
+          else
+            parser
+          end
+
         {parser, arg} = parser |> with_tokens(rest) |> expression()
+
         arguments(parser, [arg | arguments])
 
       parser ->
-        {parser, arg} = expression(parser)
-        arguments(parser, [arg | arguments])
+        {parser, Enum.reverse(arguments)}
     end
   end
 
