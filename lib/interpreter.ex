@@ -146,6 +146,34 @@ defmodule ExLox.Interpreter do
       {result, env}
     end
 
+    defimpl Interpretable, for: ExLox.Expr.Call do
+      def evaluate(%ExLox.Expr.Call{} = expr, env) do
+        {callee, env} = Interpretable.evaluate(expr.callee, env)
+
+        {arguments, env} =
+          for arg <- expr.arguments, reduce: {[], env} do
+            {args, env} ->
+              {arg, env} = Interpretable.evaluate(arg, env)
+              {[arg | args], env}
+          end
+
+        unless ExLox.Callable.impl_for(callee) do
+          raise RuntimeError,
+            message: "Can only call functions and classes.",
+            token: expr.paren
+        end
+
+        unless ExLox.Callable.arity(callee) == length(arguments) do
+          raise RuntimeError,
+            message:
+              "Expected #{ExLox.Callable.arity(callee)} arguments but got #{length(arguments)}.",
+            token: expr.paren
+        end
+
+        ExLox.Callable.call(callee, Enum.reverse(arguments), env)
+      end
+    end
+
     defimpl Interpretable, for: ExLox.Expr.Variable do
       def evaluate(%ExLox.Expr.Variable{} = expr, env) do
         {Environment.get(env, expr.name), env}
