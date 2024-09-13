@@ -5,7 +5,10 @@ defmodule ExLox.Environment do
 
   defstruct [:enclosing, values: %{}]
 
-  def new(), do: %Environment{}
+  def new() do
+    %Environment{values: %{"clock" => %ExLox.Globals.Clock{}}}
+  end
+
   def new(%Environment{} = enclosing), do: %Environment{enclosing: enclosing}
 
   def define(%Environment{} = env, %Token{type: :identifier, lexeme: name}, value) do
