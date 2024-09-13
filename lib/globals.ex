@@ -6,7 +6,7 @@ defmodule ExLox.Globals do
       def arity(_callee), do: 0
 
       def call(_callee, [], env) do
-        {NaiveDateTime.diff(NaiveDateTime.utc_now(), ~N[1970-01-01 00:00:00]), env}
+        {System.system_time(:millisecond) / 1000, env}
       end
     end
   end
