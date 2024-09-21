@@ -30,6 +30,9 @@ defmodule ExLox.Parser do
   defp declaration(%Parser{} = parser) do
     try do
       case parser do
+        %Parser{tokens: [%Token{type: :fun} | rest]} ->
+          parser |> with_tokens(rest) |> function("function")
+
         %Parser{tokens: [%Token{type: :var} | rest]} ->
           parser |> with_tokens(rest) |> var_declaration()
 
@@ -195,6 +198,57 @@ defmodule ExLox.Parser do
     {parser, expr} = expression(parser)
     {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after expression.")
     {parser, %Stmt.Expression{expression: expr}}
+  end
+
+  defp function(%Parser{} = parser, kind) do
+    {parser, name} = consume_token(parser, :identifier, "Expect #{kind} name.")
+    {parser, _token} = consume_token(parser, :left_paren, "Expect '(' after #{kind} name.")
+
+    {parser, params} = parameters(parser)
+
+    {parser, _token} = consume_token(parser, :right_paren, "Expect ')' after parameters.")
+    {parser, _token} = consume_token(parser, :left_brace, "Expect '{' before #{kind} body.")
+    {parser, body} = block(parser)
+    {parser, %Stmt.Function{name: name, params: params, body: body}}
+  end
+
+  defp parameters(parser, parameters \\ [])
+
+  defp parameters(parser, []) do
+    case parser do
+      %Parser{tokens: [%Token{type: :right_paren} | _rest]} ->
+        {parser, []}
+
+      parser ->
+        {parser, param} = consume_token(parser, :identifier, "Expect parameter name.")
+        parameters(parser, [param])
+    end
+  end
+
+  defp parameters(parser, parameters) do
+    case parser do
+      %Parser{tokens: [%Token{type: :right_paren} | _rest]} ->
+        {parser, Enum.reverse(parameters)}
+
+      %Parser{tokens: [%Token{type: :comma} | rest]} ->
+        parser =
+          if length(parameters) >= 255 do
+            ExLox.error_at_token(hd(rest), "Can't have more than 255 parameters.")
+            with_error(parser)
+          else
+            parser
+          end
+
+        {parser, param} =
+          parser
+          |> with_tokens(rest)
+          |> consume_token(:identifier, "Expect parameter name.")
+
+        parameters(parser, [param | parameters])
+
+      parser ->
+        {parser, Enum.reverse(parameters)}
+    end
   end
 
   defp block(%Parser{} = parser) do
