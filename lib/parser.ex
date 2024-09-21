@@ -208,7 +208,8 @@ defmodule ExLox.Parser do
 
     {parser, _token} = consume_token(parser, :right_paren, "Expect ')' after parameters.")
     {parser, _token} = consume_token(parser, :left_brace, "Expect '{' before #{kind} body.")
-    {parser, body} = block(parser)
+    {parser, statements} = block(parser)
+    body = %Stmt.Block{statements: statements}
     {parser, %Stmt.Function{name: name, params: params, body: body}}
   end
 

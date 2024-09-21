@@ -247,5 +247,11 @@ defmodule ExLox.Interpreter do
         env.enclosing
       end
     end
+
+    defimpl Interpretable, for: ExLox.Stmt.Function do
+      def evaluate(%ExLox.Stmt.Function{} = stmt, env) do
+        Environment.define(env, stmt.name, stmt)
+      end
+    end
   end
 end
