@@ -91,6 +91,9 @@ defmodule ExLox.Parser do
       %Parser{tokens: [%Token{type: :print} | rest]} ->
         parser |> with_tokens(rest) |> print_statement()
 
+      %Parser{tokens: [%Token{type: :return} = return_keyword | rest]} ->
+        parser |> with_tokens(rest) |> return_statement(return_keyword)
+
       %Parser{tokens: [%Token{type: :while} | rest]} ->
         parser |> with_tokens(rest) |> while_statement()
 
@@ -183,6 +186,20 @@ defmodule ExLox.Parser do
     {parser, expr} = expression(parser)
     {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after value.")
     {parser, %Stmt.Print{value: expr}}
+  end
+
+  defp return_statement(%Parser{} = parser, %Token{} = return_keyword) do
+    {parser, expr} =
+      case parser do
+        %Parser{tokens: [%Token{type: :semicolon} | _rest]} ->
+          {parser, nil}
+
+        parser ->
+          expression(parser)
+      end
+
+    {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after return value.")
+    {parser, %Stmt.Return{keyword: return_keyword, value: expr}}
   end
 
   defp while_statement(%Parser{} = parser) do
