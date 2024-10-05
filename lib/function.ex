@@ -1,28 +1,35 @@
-defimpl ExLox.Callable, for: ExLox.Stmt.Function do
-  alias ExLox.Stmt.Function
-  alias ExLox.Environment
-  alias ExLox.Token
-  alias ExLox.Interpreter.Interpretable
+defmodule ExLox.Function do
+  @enforce_keys [:stmt, :closure]
+  defstruct [:stmt, :closure]
 
-  def arity(%Function{} = function), do: length(function.params)
+  defimpl ExLox.Callable do
+    alias ExLox.Environment
+    alias ExLox.Token
+    alias ExLox.Interpreter.Interpretable
 
-  def call(%Function{params: params, body: body}, arguments, env) do
-    call_env =
-      Enum.zip_reduce(params, arguments, Environment.new(env), fn
-        %Token{} = param, arg, env -> Environment.define(env, param, arg)
-      end)
+    def arity(%ExLox.Function{stmt: stmt}), do: length(stmt.params)
 
-    try do
-      {nil, Interpretable.evaluate(body, call_env)}
-    rescue
-      r in ExLox.Interpreter.Return ->
-        {r.value, env}
+    def call(%ExLox.Function{stmt: stmt, closure: closure}, arguments) do
+      %ExLox.Stmt.Function{params: params, body: body} = stmt
+
+      call_env =
+        Enum.zip_reduce(params, arguments, Environment.new(closure), fn
+          %Token{} = param, arg, env -> Environment.define(env, param, arg)
+        end)
+
+      try do
+        Interpretable.evaluate(body, call_env)
+        nil
+      rescue
+        r in ExLox.Interpreter.Return ->
+          r.value
+      end
     end
   end
-end
 
-defimpl String.Chars, for: ExLox.Stmt.Function do
-  def to_string(%ExLox.Stmt.Function{name: name}) do
-    "<fn #{name.lexeme}>"
+  defimpl String.Chars do
+    def to_string(%ExLox.Function{stmt: stmt}) do
+      "<fn #{stmt.name.lexeme}>"
+    end
   end
 end

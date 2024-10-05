@@ -179,7 +179,7 @@ defmodule ExLox.Interpreter do
             token: expr.paren
         end
 
-        ExLox.Callable.call(callee, Enum.reverse(arguments), env)
+        {ExLox.Callable.call(callee, Enum.reverse(arguments)), env}
       end
     end
 
@@ -271,7 +271,8 @@ defmodule ExLox.Interpreter do
 
     defimpl Interpretable, for: ExLox.Stmt.Function do
       def evaluate(%ExLox.Stmt.Function{} = stmt, env) do
-        Environment.define(env, stmt.name, stmt)
+        function = %ExLox.Function{stmt: stmt, closure: env}
+        Environment.define(env, stmt.name, function)
       end
     end
   end
