@@ -7,6 +7,15 @@ defmodule ExLox.Interpreter do
     def evaluate(expression, env)
   end
 
+  defmodule Return do
+    defexception [:value]
+
+    @impl true
+    def message(%__MODULE__{value: value}) do
+      "returning #{inspect(value)}"
+    end
+  end
+
   defmodule Util do
     def check_number_operand(operator, operand) do
       if not is_number(operand) do
@@ -216,6 +225,18 @@ defmodule ExLox.Interpreter do
         {result, env} = Interpretable.evaluate(value, env)
         result |> Util.stringify() |> IO.puts()
         env
+      end
+    end
+
+    defimpl Interpretable, for: ExLox.Stmt.Return do
+      def evaluate(%ExLox.Stmt.Return{value: value}, env) do
+        {value, _env} =
+          case value do
+            nil -> {nil, env}
+            value -> Interpretable.evaluate(value, env)
+          end
+
+        raise Return, value: value
       end
     end
 

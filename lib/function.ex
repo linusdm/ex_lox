@@ -12,9 +12,12 @@ defimpl ExLox.Callable, for: ExLox.Stmt.Function do
         %Token{} = param, arg, env -> Environment.define(env, param, arg)
       end)
 
-    env = Interpretable.evaluate(body, call_env)
-
-    {nil, env}
+    try do
+      {nil, Interpretable.evaluate(body, call_env)}
+    rescue
+      r in ExLox.Interpreter.Return ->
+        {r.value, env}
+    end
   end
 end
 
