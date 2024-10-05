@@ -3,34 +3,42 @@ defmodule ExLox.Environment do
   alias ExLox.Token
   alias ExLox.RuntimeError
 
-  defstruct [:enclosing, values: %{}]
+  @enforce_keys [:id]
+  defstruct [:id, :enclosing]
 
   def new() do
-    %Environment{values: %{"clock" => %ExLox.Globals.Clock{}}}
+    id = :rand.uniform()
+    Process.put(id, %{"clock" => %ExLox.Globals.Clock{}})
+    %Environment{id: id}
   end
 
-  def new(%Environment{} = enclosing), do: %Environment{enclosing: enclosing}
+  def new(%Environment{} = enclosing), do: %Environment{id: :rand.uniform(), enclosing: enclosing}
 
   def define(%Environment{} = env, %Token{type: :identifier, lexeme: name}, value) do
-    %{env | values: Map.put(env.values, name, value)}
+    values = Process.get(env.id, %{}) |> Map.put(name, value)
+    Process.put(env.id, values)
+    env
   end
 
   def assign(%Environment{} = env, %Token{type: :identifier, lexeme: name} = token, value) do
-    case env.values do
-      %{^name => _old_value} ->
-        %{env | values: Map.put(env.values, name, value)}
+    case Process.get(env.id, %{}) do
+      %{^name => _old_value} = values ->
+        values = values |> Map.put(name, value)
+        Process.put(env.id, values)
 
       _ ->
         if env.enclosing do
-          %{env | enclosing: assign(env.enclosing, token, value)}
+          assign(env.enclosing, token, value)
         else
           raise RuntimeError, message: "Undefined variable '#{name}'.", token: token
         end
     end
+
+    env
   end
 
   def get(%Environment{} = env, %Token{type: :identifier, lexeme: name} = token) do
-    case env.values do
+    case Process.get(env.id, %{}) do
       %{^name => value} ->
         value
 
