@@ -1,4 +1,5 @@
 defmodule ExLox.Token do
+  @enforce_keys [:type, :lexeme, :literal, :line]
   defstruct [:type, :lexeme, :literal, :line]
 end
 
