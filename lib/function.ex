@@ -2,23 +2,29 @@ defmodule ExLox.Function do
   @enforce_keys [:stmt, :closure]
   defstruct [:stmt, :closure]
 
+  alias __MODULE__
+
   defimpl ExLox.Callable do
     alias ExLox.Environment
-    alias ExLox.Token
     alias ExLox.Interpreter.Interpretable
 
-    def arity(%ExLox.Function{stmt: stmt}), do: length(stmt.params)
+    def arity(%Function{stmt: stmt}), do: length(stmt.params)
 
-    def call(%ExLox.Function{stmt: stmt, closure: closure}, arguments) do
-      %ExLox.Stmt.Function{params: params, body: body} = stmt
+    def call(%Function{} = function, arguments) do
+      closure =
+        Environment.new(function.closure)
+        # This allows functions to call themselves.
+        # Defining this function when interpreting the function definition doesn't work
+        # as it would create a circular dependency between the function struct and the environment.
+        |> Environment.define(function.stmt.name, function)
 
       call_env =
-        Enum.zip_reduce(params, arguments, Environment.new(closure), fn
-          %Token{} = param, arg, env -> Environment.define(env, param, arg)
+        Enum.zip_reduce(function.stmt.params, arguments, closure, fn
+          param, arg, env -> Environment.define(env, param, arg)
         end)
 
       try do
-        Interpretable.evaluate(body, call_env)
+        Interpretable.evaluate(function.stmt.body, call_env)
         nil
       rescue
         r in ExLox.Interpreter.Return ->
@@ -28,7 +34,7 @@ defmodule ExLox.Function do
   end
 
   defimpl String.Chars do
-    def to_string(%ExLox.Function{stmt: stmt}) do
+    def to_string(%Function{stmt: stmt}) do
       "<fn #{stmt.name.lexeme}>"
     end
   end
