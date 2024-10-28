@@ -1,11 +1,7 @@
 defmodule ExLox.Resolver do
   alias __MODULE__
 
-  defstruct scopes: [],
-            status: :ok,
-            current_function_type: nil,
-            # TODO: unused right now (in principe niet nodig om variabelen op te zoeken in environment chain, vanwege immutable snapshot van env)
-            locals: %{}
+  defstruct scopes: [], status: :ok, current_function_type: nil
 
   defprotocol Resolvable do
     @spec resolve(t, Resolver.t()) :: Resolver.t()
@@ -49,13 +45,6 @@ defmodule ExLox.Resolver do
       case scopes do
         [] -> resolver
         [hd | tl] -> %Resolver{resolver | scopes: [Map.put(hd, token.lexeme, true) | tl]}
-      end
-    end
-
-    def resolve_local(%Resolver{} = resolver, expr, %ExLox.Token{} = token) do
-      case Enum.find_index(resolver.scopes, &Map.has_key?(&1, token.lexeme)) do
-        nil -> resolver
-        distance -> update_in(resolver.locals, &Map.put(&1, expr, distance))
       end
     end
 
@@ -157,15 +146,12 @@ defmodule ExLox.Resolver do
           _ ->
             resolver
         end
-        |> Util.resolve_local(expr, expr.name)
       end
     end
 
     defimpl Resolvable, for: ExLox.Expr.Assign do
       def resolve(%ExLox.Expr.Assign{} = expr, resolver) do
-        resolver
-        |> Util.resolve(expr.value)
-        |> Util.resolve_local(expr, expr.name)
+        Util.resolve(resolver, expr.value)
       end
     end
 
