@@ -15,8 +15,8 @@ defmodule ExLox.Stmt do
   end
 
   defmodule Print do
-    @enforce_keys [:value]
-    defstruct [:value]
+    @enforce_keys [:expression]
+    defstruct [:expression]
   end
 
   defmodule Return do

@@ -185,7 +185,7 @@ defmodule ExLox.Parser do
   defp print_statement(%Parser{} = parser) do
     {parser, expr} = expression(parser)
     {parser, _token} = consume_token(parser, :semicolon, "Expect ';' after value.")
-    {parser, %Stmt.Print{value: expr}}
+    {parser, %Stmt.Print{expression: expr}}
   end
 
   defp return_statement(%Parser{} = parser, %Token{} = return_keyword) do
@@ -226,8 +226,7 @@ defmodule ExLox.Parser do
     {parser, _token} = consume_token(parser, :right_paren, "Expect ')' after parameters.")
     {parser, _token} = consume_token(parser, :left_brace, "Expect '{' before #{kind} body.")
     {parser, statements} = block(parser)
-    body = %Stmt.Block{statements: statements}
-    {parser, %Stmt.Function{name: name, params: params, body: body}}
+    {parser, %Stmt.Function{name: name, params: params, body: statements}}
   end
 
   defp parameters(parser, parameters \\ [])

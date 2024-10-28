@@ -24,7 +24,7 @@ defmodule ExLox.Function do
         end)
 
       try do
-        Interpretable.evaluate(function.stmt.body, call_env)
+        Enum.reduce(function.stmt.body, call_env, &Interpretable.evaluate/2)
         nil
       rescue
         r in ExLox.Interpreter.Return ->

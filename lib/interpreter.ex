@@ -221,8 +221,8 @@ defmodule ExLox.Interpreter do
     end
 
     defimpl Interpretable, for: ExLox.Stmt.Print do
-      def evaluate(%ExLox.Stmt.Print{value: value}, env) do
-        {result, env} = Interpretable.evaluate(value, env)
+      def evaluate(%ExLox.Stmt.Print{expression: expression}, env) do
+        {result, env} = Interpretable.evaluate(expression, env)
         result |> Util.stringify() |> IO.puts()
         env
       end

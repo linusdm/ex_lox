@@ -24,7 +24,8 @@ defmodule ExLox do
 
   defp run(source, env \\ Environment.new()) do
     with {scan_status, tokens} <- ExLox.Scanner.scan_tokens(source),
-         {:ok, statements} <- ExLox.Parser.parse(tokens, scan_status) do
+         {:ok, statements} <- ExLox.Parser.parse(tokens, scan_status),
+         :ok <- ExLox.Resolver.resolve(statements) do
       case ExLox.Interpreter.interpret(statements, env) do
         {:ok, env} -> {:ok, env}
         :error -> :runtime_error
